@@ -11,6 +11,9 @@
 #include <string>
 #include <boost/math/distributions/normal.hpp>
 
+#define DIVISION_ERROR 10
+#define PRINT_BLOCK_PER_PROBABILITY 0.003
+
 #define DEBUG_BUILD
 #ifdef DEBUG_BUILD
 #define DEBUG(x) std::cerr << x << std::endl
@@ -114,16 +117,12 @@ public:
     void create_normal_distribution(real standard_deviation_quotient){
         
         real mean = from + ((to-from) / 2);
-        std::cout << mean << " " << from << " " << to << " " << std::endl;
-        DEBUG2((mean-from), standard_deviation_quotient);
         real standard_deviation = (mean-from) / standard_deviation_quotient;
         real sum = 0;
 
-        std::cout << "::::::::::::SD::::::::::::::::" << standard_deviation << std::endl;
         auto dist = boost::math::normal_distribution<real>(mean, standard_deviation);
         for(real i = from; i <= to; i += bin_size){
             distribution[i] = boost::math::pdf(dist, i);
-            DEBUG2(i, distribution[i]);
             sum += distribution[i];
         }
 
@@ -145,13 +144,13 @@ public:
     }
 
     real nearest_bin(real number){
-        int multiple = round(number / bin_size);
-        return multiple * bin_size;
+        int multiple = round((number-from) / bin_size);
+        return multiple * bin_size + from;
     }
 
     real nearest_bin(real number, real another_bin_size){
-        int multiple = round(number / another_bin_size);
-        return multiple * another_bin_size;
+        int multiple = round((number-from) / another_bin_size);
+        return multiple * another_bin_size + from;
     }
 
     void normalize(){
@@ -171,7 +170,6 @@ public:
     Distribution operator+(const Distribution &second){
         Distribution<real> new_dist = Distribution<real>('m', bin_size); // m stands for mixed TODO
 
-        real divide_by = (real)return_num_of_bins();
         for (auto&& element1 : distribution){
             for (auto&& element2 : second.distribution){
                 // already in new_dist
@@ -205,11 +203,32 @@ public:
         return new_dist;
     }
 
-    Distribution operator-(const Distribution &second){}
+    Distribution operator-(const Distribution &second){
+        Distribution<real> new_dist = Distribution<real>('m', bin_size); // m stands for mixed TODO
+
+        for (auto&& element1 : distribution){
+            for (auto&& element2 : second.distribution){
+                // already in new_dist
+                if(new_dist.distribution.find(element1.first - element2.first) != new_dist.distribution.end()){
+                    new_dist.distribution[element1.first - element2.first] += (element1.second - element2.second);
+                }
+                else{ // new element in new_dist
+                    new_dist.distribution[element1.first - element2.first] = (element1.second - element2.second);
+                }
+            }
+        }
+
+        new_dist.from = new_dist.distribution.begin()->first;
+        new_dist.to = new_dist.distribution.rbegin()->first; //TODO opravdu spravne?
+
+        new_dist.normalize();
+        return new_dist;
+    }
 
     Distribution operator-(const int scalar){
         Distribution<real> new_dist = Distribution<real>(*this); // m stands for mixed TODO
 
+        DEBUG("MINUS");
         std::map<real, real> new_map;
         for(auto&& element : distribution){
             new_map[element.first - scalar] = element.second;
@@ -218,11 +237,32 @@ public:
         new_dist.to = to - scalar;
         new_dist.distribution = new_map;
 
+        DEBUG("MINUS hotovo");
         return new_dist;
     }
 
     Distribution operator*(const Distribution &second){
+        Distribution<real> new_dist = Distribution<real>('m', bin_size); // m stands for mixed TODO
 
+        for (auto&& element1 : distribution){
+            for (auto&& element2 : second.distribution){
+                // already in new_dist
+                if(new_dist.distribution.find(nearest_bin(element1.first * element2.first)) != new_dist.distribution.end()){
+                    new_dist.distribution[nearest_bin(element1.first * element2.first)] += (element1.second + element2.second);
+                }
+                else{ // new element in new_dist
+                    new_dist.distribution[nearest_bin(element1.first * element2.first)] = (element1.second + element2.second);
+                }
+            }
+        }
+
+        new_dist.from = new_dist.distribution.begin()->first;
+        new_dist.to = new_dist.distribution.rbegin()->first; //TODO opravdu spravne?
+
+        new_dist.normalize();
+        DEBUG("ROZNASOBENO");
+
+        return new_dist;
     }
 
     Distribution operator*(const int scalar){
@@ -235,13 +275,16 @@ public:
         new_dist.from = nearest_bin(from * scalar);
         new_dist.to = nearest_bin(to * scalar);
         new_dist.distribution = new_map;
-
         return new_dist;
     }
 
     Distribution operator/(const Distribution &second){}
 
     Distribution operator/(const int scalar){}
+
+    real error_rounding(real number){
+        return round(number * DIVISION_ERROR) / DIVISION_ERROR;
+    }
 
     /**
      * num_of_result_bins ... -1 (print every bin)
@@ -252,32 +295,41 @@ public:
 
         // print return_num_of_bins() bins
         if (num_of_result_bins == -1 || (int)return_num_of_bins() < num_of_result_bins){
-            for (real i = from; i <= to; i += bin_size){
-                std::cout << std::right << std::setw(9) << i << " "; // TODO zlepsit mezeru
+            for (real i = to; i >= from; i -= bin_size){
+                std::cout << std::right << std::setw(9) << i << "  "; // TODO zlepsit mezeru
                 if(distribution.find(i) != distribution.end()){
                     sum += distribution[i];
-                    int hvezd = distribution[i] / 0.01;
+                    int hvezd = distribution[i] / PRINT_BLOCK_PER_PROBABILITY;
                     for(int h = 0; h <= hvezd; h++) std::cout << "*";
                 }
                 std::cout << std::endl;
             }
         }
         else{ // otherwise print num_of_result_bins bins
-            real new_bin_size = (to - from) / num_of_result_bins;
+            real new_bin_size = (to - from) / (num_of_result_bins - 1);
             std::map<real, real> tmp;
 
-            for(real i = from; i <= to; i+=new_bin_size) tmp[i] = 0;
+            for(real i = 0; i < num_of_result_bins; i++) tmp[error_rounding(nearest_bin(i*new_bin_size + from, new_bin_size))] = 0;
+            // DEBUG(tmp.size());
+            // for(auto&& element : tmp) DEBUG2("Prvek ", element.first);
+
             for(auto&& element : distribution){
-                tmp[nearest_bin(element.first, new_bin_size)] += element.second;
+                tmp[error_rounding(nearest_bin(element.first, new_bin_size))] += element.second;
+                // DEBUG2("size", tmp.size());
+                // DEBUG(error_rounding(nearest_bin(element.first, new_bin_size)));
             }
-            for(auto&& element : tmp){
-                sum += element.second;
-                int hvezd = element.second / 0.01;
-                std::cout << std::right << std::setw(9) << element.first << " "; // TODO zlepsit mezeru
+            // DEBUG(tmp.size());
+            // for(auto&& element : tmp) DEBUG2("Prvek ", element.first);
+
+
+            for(auto element = tmp.rbegin(); element != tmp.rend(); ++element){
+                sum += element->second;
+                int hvezd = element->second / PRINT_BLOCK_PER_PROBABILITY;
+                std::cout << std::right << std::setw(9) << element->first << "  "; // TODO zlepsit mezeru
                 for(int h = 0; h <= hvezd; h++) std::cout << "*";
                 std::cout << std::endl;
-            }
 
+            }
         }
 
         DEBUG2("SUM = ", sum);
