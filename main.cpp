@@ -3,131 +3,95 @@
 #include <sstream>
 #include <map>
 #include <cmath>
+#include <fstream>
+#include <string>
+#include <boost/math/distributions/normal.hpp>
+
+#include "distribution.hpp"
+#include "expression.hpp"
 
 #define NUM_OF_RESULT_BINS_DEFAULT 25
 
 // Returns true on success, false on failure.
 // TODO: pridat const
-// TODO: nastavitelny variance
 
-class Expression{
-
-};
-
-template <typename real> class Distribution{
-    std::map<real, real> distribution;
-    real bin_size;
-    real from;
-    real to;
-    bool wrong_distribution;
-    unsigned int num_of_bins;
-
-public:
-
-    Distribution(char type, real from_param, real to_param) {
-
-        from = round(from_param / bin_size);
-        to = round(to_param/bin_size);
-
-        // when from > to, the distribution is not correct
-        if(from > to){
-            wrong_distribution = true;
-            return;
-        }
-        else wrong_distribution = false;
-
-        num_of_bins = (to - from + bin_size) / bin_size;
-
-        switch (type){
-            case '~': // normal distribution
-                create_normal_distribution();
-                break;
-            case 'n': // also normal distribution
-                create_normal_distribution();
-                break;
-            
-            case 'u': // uniform distribution
-                create_uniform_distribution();
-                break;
-
-            case 'b': // binomial distribution
-                create_binomial_distribution();
-                break;
-        default:
-            break;
-        }
-
-
-    }
-
-    void create_normal_distribution(){
-
-    }
-
-    void create_uniform_distribution(){
-        real uniform_value = 1 / num_of_bins;
-
-        for(real i = from; i <= to; i += bin_size){
-            distribution[i] = uniform_value;
-        }
-    }
-
-    void create_binomial_distribution(){
-        
-    }
-
-
-    Distribution operator+(const Distribution &second){}
-    Distribution operator+(const int scalar){}
-
-    Distribution operator-(const Distribution &second){}
-    Distribution operator-(const int scalar){}
-
-    Distribution operator*(const Distribution &second){}
-    Distribution operator*(const int scalar){}
-
-    Distribution operator/(const Distribution &second){}
-    Distribution operator/(const int scalar){}
-
-};
-
+#define DEBUG_BUILD
+#ifdef DEBUG_BUILD
+#define DEBUG(x) std::cerr << x << std::endl
+#define DEBUG2(x, y) std::cerr << x << " " << y << std::endl
+#else
+#define DEBUG(x)                                                               \
+  do {                                                                         \
+  } while (0)
+#define DEBUG2(x, y)                                                           \
+  do {                                                                         \
+  } while (0)
+#endif
 
 // real is the type that represents the real number
-template <typename real> class Program{
+template <typename real>
+class Program{
 
     int argc;
     char **argv;
 
-    bool input_flag;
-    char* input_file_name;
-    
+    real bin_size; // size of the bins in which the distributions are stored
+    int num_of_result_bins;
+
+    bool postfix;
+
+    bool help_flag;
+
     bool output_flag;
     char* output_file_name;
 
-    bool help_flag;
-    int num_of_result_bins;
+    bool input_flag;
+    char* input_file_name;
 
-    real bin_size; // size of the bins in which the distributions are stored
+    Distribution<real> result; // probably unnecessary
+
+    
 
     /**
      * 
      */
     bool save_output(){
 
+        return true;
     }
 
     /**
      * 
      */
     void print_output(){
-
+        result.print();
     }
+
+    bool parse_postfix_input(std::stringstream& buffer){
+
+        return true;
+    }
+
+
+    bool parse_infix_input(std::stringstream& buffer){
+
+        float from, to;
+        buffer >> from >> to;
+        result = Distribution<real>('n', from, to, bin_size);
+
+        return true;
+    }
+
 
 public:
     Program(int argc, char **argv) : argc(argc),
                                      argv(argv),
                                      bin_size(1),
-                                     num_of_result_bins(NUM_OF_RESULT_BINS_DEFAULT) {}
+                                     num_of_result_bins(NUM_OF_RESULT_BINS_DEFAULT),
+                                     postfix(false),
+                                     help_flag(false),
+                                     output_flag(false),
+                                     input_flag(false) {}
 
 
     /**
@@ -157,9 +121,13 @@ public:
                     bin_size_char = optarg; // size of the bin has to follow
                     s_in_switch = true;
                     break;
+                case 'p':
+                    postfix = true;
+                    break;
                 case 'r': // how many bins to use during result presentation
                     result_bins_char = optarg;
                     r_in_switch = true;
+                    break;
                 case 'h': // print help
                     help_flag = true;
                     // don't read other options, just print help and quit
@@ -204,7 +172,31 @@ public:
      * Returns true on success, false on failure.
      */
     bool read_input(){
+        std::stringstream buffer; // We put the whole file into the buffer
 
+        if(input_flag){
+            std::ifstream input_file(input_file_name);
+
+            // Check whether the file is correctly opened or not
+            if(input_file.is_open()){
+                buffer << input_file.rdbuf(); // Load the file into the buffer
+                input_file.close();
+            }
+            else{
+                std::cerr
+                << "ERROR: UNABLE TO OPEN THE INPUT FILE "
+                << input_file_name << std::endl;
+                return false;
+            }
+        }
+        else{ // If no file specified, read the input from stdin
+            std::string input;
+            std::getline(std::cin, input);
+            buffer << input << std::endl;
+        }
+
+        if(postfix) return parse_postfix_input(buffer);
+        else return parse_infix_input(buffer);
     }
 
     /**
@@ -217,6 +209,7 @@ public:
             std::cout << "Usage: aprox [-i in] [-o out] [-s interval size]" << std::endl;
             std::cout << "    -i: input file, default: stdin" << std::endl;
             std::cout << "    -o: output file, default: stdout" << std::endl;
+            std::cout << "    -p: read postfix notation, default: infix" << std::endl;
             std::cout << "    -b: bin_size - size of the bins in which the distributions are stored, default = 1" << std::endl;
             std::cout << "    -r: how many bins to use during result presentation, default = " << NUM_OF_RESULT_BINS_DEFAULT << std::endl;
             return true;
@@ -246,7 +239,7 @@ public:
      * Returns true on success, false on failure (division by zero for example).
      */
     bool compute(){
-
+        return true;
     }
 };
 

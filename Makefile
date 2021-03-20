@@ -2,7 +2,7 @@ all: main
 
 .PHONY: all clean valgrind format
 
-main: main.cpp
+main: main.cpp distribution.hpp expression.hpp
 	g++ main.cpp -o main -std=c++17 -Wall -Wextra
 
 valgrind:
