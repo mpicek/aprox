@@ -48,7 +48,7 @@ class Program{
     bool input_flag;
     char* input_file_name;
 
-    Distribution<real> result; // probably unnecessary
+    Distribution<real> result; // probably unnecessary ... TODO potrebuju kvuli tyhle blbosti default constructor :(
 
     
 
