@@ -11,9 +11,11 @@
 #include "expression.hpp"
 
 #define NUM_OF_RESULT_BINS_DEFAULT 25
+#define STANDARD_DEVIATION_QUOTIENT 2
 
 // Returns true on success, false on failure.
 // TODO: pridat const
+//TODO smazat floaty a doubly, jestli je nekde mam
 
 #define DEBUG_BUILD
 #ifdef DEBUG_BUILD
@@ -64,7 +66,7 @@ class Program{
      * 
      */
     void print_output(){
-        result.print();
+        result.print(num_of_result_bins);
     }
 
     bool parse_postfix_input(std::stringstream& buffer){
@@ -75,9 +77,9 @@ class Program{
 
     bool parse_infix_input(std::stringstream& buffer){
 
-        float from, to;
+        real from, to;
         buffer >> from >> to;
-        result = Distribution<real>('n', from, to, bin_size);
+        result = Distribution<real>('n', from, to, bin_size, STANDARD_DEVIATION_QUOTIENT);
 
         return true;
     }
