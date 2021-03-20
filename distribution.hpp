@@ -29,6 +29,7 @@
 
 template <typename real>
 class Distribution{
+
     std::map<real, real> distribution;
     char type;
     real from;
@@ -189,7 +190,7 @@ public:
         return new_dist;
     }
 
-    Distribution operator+(const int scalar){
+    Distribution operator+(const real scalar){
         Distribution<real> new_dist = Distribution<real>(*this); // m stands for mixed TODO
 
         std::map<real, real> new_map;
@@ -225,7 +226,7 @@ public:
         return new_dist;
     }
 
-    Distribution operator-(const int scalar){
+    Distribution operator-(const real scalar){
         Distribution<real> new_dist = Distribution<real>(*this); // m stands for mixed TODO
 
         DEBUG("MINUS");
@@ -265,7 +266,7 @@ public:
         return new_dist;
     }
 
-    Distribution operator*(const int scalar){
+    Distribution operator*(const real scalar){
         Distribution<real> new_dist = Distribution<real>(*this); // m stands for mixed TODO
 
         std::map<real, real> new_map;
@@ -280,7 +281,22 @@ public:
 
     Distribution operator/(const Distribution &second){}
 
-    Distribution operator/(const int scalar){}
+    Distribution operator/(const real scalar){
+        if(scalar == 0){ // TODO doresit
+            wrong_distribution = true; 
+        }
+
+        Distribution<real> new_dist = Distribution<real>(*this); // m stands for mixed TODO
+
+        std::map<real, real> new_map;
+        for(auto&& element : distribution){
+            new_map[nearest_bin(element.first / scalar)] = element.second;
+        }
+        new_dist.from = nearest_bin(from / scalar);
+        new_dist.to = nearest_bin(to / scalar);
+        new_dist.distribution = new_map;
+        return new_dist;
+    }
 
     real error_rounding(real number){
         return round(number * DIVISION_ERROR) / DIVISION_ERROR;
@@ -337,18 +353,21 @@ public:
 };
 
 template <typename real>
-Distribution<real> operator+(const int scalar, Distribution<real> dist){
+Distribution<real> operator+(const real scalar, Distribution<real> dist){
     return dist + scalar;
 }
 
 template <typename real>
-Distribution<real> operator-(const int scalar, Distribution<real> dist){
+Distribution<real> operator-(const real scalar, Distribution<real> dist){
     return dist - scalar;
 }
 
 template <typename real>
-Distribution<real> operator*(const int scalar, Distribution<real> dist){
+Distribution<real> operator*(const real scalar, Distribution<real> dist){
     return dist * scalar;
 }
+
+// TODO operator/
+
 
 #endif
