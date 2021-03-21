@@ -140,9 +140,7 @@ public:
         }
     }
 
-    void create_binomial_distribution(){
-        
-    }
+    void create_binomial_distribution(){}
 
     real nearest_bin(real number){
         int multiple = round((number-from) / bin_size);
@@ -191,6 +189,7 @@ public:
     }
 
     Distribution operator+(const real scalar){
+        // TODO opravit
         Distribution<real> new_dist = Distribution<real>(*this); // m stands for mixed TODO
 
         std::map<real, real> new_map;
@@ -279,13 +278,20 @@ public:
         return new_dist;
     }
 
-    Distribution operator/(const Distribution &second){}
+    Distribution operator/(const Distribution &second){
+
+        //TODO vyresit deleni nulou
+        Distribution<real> prepared_for_division = divide_scalar_numerator(1);
+        // prepared_for_division.print(20);
+        return prepared_for_division * second;
+    }
 
     Distribution operator/(const real scalar){
         if(scalar == 0){ // TODO doresit
             wrong_distribution = true; 
         }
 
+        // TODO opravit
         Distribution<real> new_dist = Distribution<real>(*this); // m stands for mixed TODO
 
         std::map<real, real> new_map;
@@ -305,20 +311,21 @@ public:
     /**
      * num_of_result_bins ... -1 (print every bin)
      */
-    void print(int num_of_result_bins){
-        std::cout << std::endl;
+    void print(std::ostream& ostr, int num_of_result_bins){
+        ostr << "RESULT = " << from << " ~ " << to << std::endl;
+        ostr << std::endl;
         real sum = 0;
 
         // print return_num_of_bins() bins
         if (num_of_result_bins == -1 || (int)return_num_of_bins() < num_of_result_bins){
             for (real i = to; i >= from; i -= bin_size){
-                std::cout << std::right << std::setw(9) << i << "  "; // TODO zlepsit mezeru
+                ostr << std::right << std::setw(9) << i << "  "; // TODO zlepsit mezeru
                 if(distribution.find(i) != distribution.end()){
                     sum += distribution[i];
                     int hvezd = distribution[i] / PRINT_BLOCK_PER_PROBABILITY;
-                    for(int h = 0; h <= hvezd; h++) std::cout << "*";
+                    for(int h = 0; h <= hvezd; h++) ostr << "*";
                 }
-                std::cout << std::endl;
+                ostr << std::endl;
             }
         }
         else{ // otherwise print num_of_result_bins bins
@@ -326,48 +333,68 @@ public:
             std::map<real, real> tmp;
 
             for(real i = 0; i < num_of_result_bins; i++) tmp[error_rounding(nearest_bin(i*new_bin_size + from, new_bin_size))] = 0;
-            // DEBUG(tmp.size());
-            // for(auto&& element : tmp) DEBUG2("Prvek ", element.first);
 
             for(auto&& element : distribution){
                 tmp[error_rounding(nearest_bin(element.first, new_bin_size))] += element.second;
-                // DEBUG2("size", tmp.size());
-                // DEBUG(error_rounding(nearest_bin(element.first, new_bin_size)));
             }
-            // DEBUG(tmp.size());
-            // for(auto&& element : tmp) DEBUG2("Prvek ", element.first);
-
 
             for(auto element = tmp.rbegin(); element != tmp.rend(); ++element){
                 sum += element->second;
                 int hvezd = element->second / PRINT_BLOCK_PER_PROBABILITY;
-                std::cout << std::right << std::setw(9) << element->first << "  "; // TODO zlepsit mezeru
-                for(int h = 0; h <= hvezd; h++) std::cout << "*";
-                std::cout << std::endl;
-
+                ostr << std::right << std::setw(9) << element->first << "  "; // TODO zlepsit mezeru
+                for(int h = 0; h <= hvezd; h++) ostr << "*";
+                ostr << std::endl;
             }
         }
 
         DEBUG2("SUM = ", sum);
     }
+
+    Distribution divide_scalar_numerator(real scalar){
+        Distribution<real> new_dist = Distribution<real>('m', bin_size); // m stands for mixed TODO
+
+        // TODO: vyresit deleni nulou
+        for (auto&& element : distribution){
+            // TODO NEAREST BIN NEBUDE FUNGOVAT, PROTOZE TAM NEPLATI TA PROMENNA FROM
+            new_dist.distribution[nearest_bin(scalar/element.first)] = element.second;
+            DEBUG(nearest_bin(scalar/element.first));
+        }
+
+        new_dist.from = new_dist.distribution.begin()->first;
+        new_dist.to = new_dist.distribution.rbegin()->first;
+
+        return new_dist;
+    }
 };
 
+/**
+ * Commutative arithmetic operation.
+ */
 template <typename real>
 Distribution<real> operator+(const real scalar, Distribution<real> dist){
     return dist + scalar;
 }
 
+/**
+ * Commutative arithmetic operation.
+ */
 template <typename real>
 Distribution<real> operator-(const real scalar, Distribution<real> dist){
     return dist - scalar;
 }
 
+/**
+ * Commutative arithmetic operation.
+ */
 template <typename real>
 Distribution<real> operator*(const real scalar, Distribution<real> dist){
     return dist * scalar;
 }
 
-// TODO operator/
 
+template <typename real>
+Distribution<real> operator/(const real scalar, Distribution<real> dist){
+    return dist.divide_scalar_numerator(scalar);
+}
 
 #endif

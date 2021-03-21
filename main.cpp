@@ -52,22 +52,6 @@ class Program{
 
     Distribution<real> result; // probably unnecessary ... TODO potrebuju kvuli tyhle blbosti default constructor :(
 
-    
-
-    /**
-     * 
-     */
-    bool save_output(){
-
-        return true;
-    }
-
-    /**
-     * 
-     */
-    void print_output(){
-        result.print(num_of_result_bins);
-    }
 
     bool parse_postfix_input(std::stringstream& buffer){
 
@@ -77,9 +61,9 @@ class Program{
 
     bool parse_infix_input(std::stringstream& buffer){
 
-        real from, to;
-        buffer >> from >> to;
-        result = Distribution<real>('n', from, to, bin_size, STANDARD_DEVIATION_QUOTIENT);
+        // real from, to;
+        // buffer >> from >> to;
+        result = Distribution<real>('n', 5, 20, bin_size, STANDARD_DEVIATION_QUOTIENT);
 
         return true;
     }
@@ -227,11 +211,23 @@ public:
      */
     bool output(){
         if(output_flag){
-            if(save_output()) return true;
-            else return false;
+
+            std::ofstream out;
+            out.open(output_file_name);
+
+            // TODO JE TEN SOUBOR DOBRE OSETRENEJ?
+            // https://stackoverflow.com/questions/29811986/c-function-cout-redirect-to-file
+            if(out.is_open()){
+                result.print(out, num_of_result_bins);
+                out.close();
+                return true;
+            }
+            else{
+                return false;
+            }
         }
         else{
-            print_output();
+            result.print(std::cout, num_of_result_bins);
             return true;
         }
     }
