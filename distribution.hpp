@@ -36,7 +36,7 @@ class Distribution{
     real to;
     real standard_deviation_quotient;
     real bin_size; // TODO bin_size has to be compatible
-    bool wrong_distribution;
+    bool error_occured;
 
 public:
 
@@ -44,29 +44,25 @@ public:
 
     Distribution(char type, real bin_size) : type(type), 
                                                                      bin_size(bin_size), 
-                                                                     wrong_distribution(false) {}
+                                                                     error_occured(false) {}
 
     //TODO nastavitelnej standard_deviation_quotient (tzn. nastavitelny variance)
     Distribution(char type, real from_param, real to_param, real bin_size, 
                  real standard_deviation_quotient) : 
                                                               type(type),
                                                               bin_size(bin_size),
-                                                              wrong_distribution(false) {
+                                                              error_occured(false) {
 
-        DEBUG2(from_param, to_param);
 
-        //TODO wrong!!! from and to have to be counted differently (round to closest multiple of bin_size!!)
         from = nearest_bin(from_param);
         to = nearest_bin(to_param);
 
-        DEBUG2(from, to);
-
         // when from > to, the distribution is not correct
-        if(from > to){
-            wrong_distribution = true;
+        if(from >= to){
+            error_occured = true;
             return;
         }
-        else wrong_distribution = false;
+        else error_occured = false;
 
         switch (type){
             case '~': // normal distribution
@@ -96,6 +92,7 @@ public:
         from = second.from;
         to = second.to;
         bin_size = second.bin_size;
+        error_occured = second.error_occured;
     }
 
     /**
@@ -111,6 +108,7 @@ public:
         from = second.from;
         to = second.to;
         bin_size = second.bin_size;
+        error_occured = second.error_occured;
         
         return *this;
     }
@@ -168,6 +166,12 @@ public:
 
     Distribution operator+(const Distribution &second){
         Distribution<real> new_dist = Distribution<real>('m', bin_size); // m stands for mixed TODO
+        if(error_occured || second.error_occured){
+            new_dist.error_occured = true;
+            return new_dist;
+        }
+        new_dist.error_occured = false;
+        
 
         for (auto&& element1 : distribution){
             for (auto&& element2 : second.distribution){
@@ -189,8 +193,13 @@ public:
     }
 
     Distribution operator+(const real scalar){
-        // TODO opravit
+        // TODO opravit (to *this)
         Distribution<real> new_dist = Distribution<real>(*this); // m stands for mixed TODO
+        if(error_occured){
+            new_dist.error_occured = true;
+            return new_dist;
+        }
+        new_dist.error_occured = false;
 
         std::map<real, real> new_map;
         for(auto&& element : distribution){
@@ -205,6 +214,11 @@ public:
 
     Distribution operator-(const Distribution &second){
         Distribution<real> new_dist = Distribution<real>('m', bin_size); // m stands for mixed TODO
+        if(error_occured || second.error_occured){
+            new_dist.error_occured = true;
+            return new_dist;
+        }
+        new_dist.error_occured = false;
 
         for (auto&& element1 : distribution){
             for (auto&& element2 : second.distribution){
@@ -227,8 +241,12 @@ public:
 
     Distribution operator-(const real scalar){
         Distribution<real> new_dist = Distribution<real>(*this); // m stands for mixed TODO
+        if(error_occured){
+            new_dist.error_occured = true;
+            return new_dist;
+        }
+        new_dist.error_occured = false;
 
-        DEBUG("MINUS");
         std::map<real, real> new_map;
         for(auto&& element : distribution){
             new_map[element.first - scalar] = element.second;
@@ -237,12 +255,16 @@ public:
         new_dist.to = to - scalar;
         new_dist.distribution = new_map;
 
-        DEBUG("MINUS hotovo");
         return new_dist;
     }
 
     Distribution operator*(const Distribution &second){
         Distribution<real> new_dist = Distribution<real>('m', bin_size); // m stands for mixed TODO
+        if(error_occured || second.error_occured){
+            new_dist.error_occured = true;
+            return new_dist;
+        }
+        new_dist.error_occured = false;
 
         for (auto&& element1 : distribution){
             for (auto&& element2 : second.distribution){
@@ -260,13 +282,17 @@ public:
         new_dist.to = new_dist.distribution.rbegin()->first; //TODO opravdu spravne?
 
         new_dist.normalize();
-        DEBUG("ROZNASOBENO");
 
         return new_dist;
     }
 
     Distribution operator*(const real scalar){
         Distribution<real> new_dist = Distribution<real>(*this); // m stands for mixed TODO
+        if(error_occured){
+            new_dist.error_occured = true;
+            return new_dist;
+        }
+        new_dist.error_occured = false;
 
         std::map<real, real> new_map;
         for(auto&& element : distribution){
@@ -279,20 +305,24 @@ public:
     }
 
     Distribution operator/(const Distribution &second){
-
-        //TODO vyresit deleni nulou
         Distribution<real> prepared_for_division = divide_scalar_numerator(1);
-        // prepared_for_division.print(20);
+        if(prepared_for_division.error_occured || second.error_occured || (second.from < 0 && second.to > 0)){
+            prepared_for_division.error_occured = true;
+            return prepared_for_division;
+        }
+        prepared_for_division.error_occured = false;
+
         return prepared_for_division * second;
     }
 
     Distribution operator/(const real scalar){
-        if(scalar == 0){ // TODO doresit
-            wrong_distribution = true; 
-        }
-
         // TODO opravit
         Distribution<real> new_dist = Distribution<real>(*this); // m stands for mixed TODO
+        if(error_occured || scalar == 0){
+            new_dist.error_occured = true;
+            return new_dist;
+        }
+        new_dist.error_occured = false;
 
         std::map<real, real> new_map;
         for(auto&& element : distribution){
@@ -312,6 +342,10 @@ public:
      * num_of_result_bins ... -1 (print every bin)
      */
     void print(std::ostream& ostr, int num_of_result_bins){
+        if(error_occured){
+            std::cerr << "ERROR OCCURED DURING COMPUTATION (PROBABLY DIVISION BY 0)." << std::endl;
+            return;
+        }
         ostr << "RESULT = " << from << " ~ " << to << std::endl;
         ostr << std::endl;
         real sum = 0;
@@ -352,6 +386,11 @@ public:
 
     Distribution divide_scalar_numerator(real scalar){
         Distribution<real> new_dist = Distribution<real>('m', bin_size); // m stands for mixed TODO
+        if(error_occured){
+            new_dist.error_occured = true;
+            return new_dist;
+        }
+        new_dist.error_occured = false;
 
         // TODO: vyresit deleni nulou
         for (auto&& element : distribution){
