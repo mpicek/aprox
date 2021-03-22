@@ -51,22 +51,7 @@ class Program{
     char* input_file_name;
 
     Distribution<real> result; // probably unnecessary ... TODO potrebuju kvuli tyhle blbosti default constructor :(
-
-
-    bool parse_postfix_input(std::stringstream& buffer){
-
-        return true;
-    }
-
-
-    bool parse_infix_input(std::stringstream& buffer){
-
-        // real from, to;
-        // buffer >> from >> to;
-        result = Distribution<real>('n', 5, 20, bin_size, STANDARD_DEVIATION_QUOTIENT);
-
-        return true;
-    }
+    Expression<real> expression;
 
 
 public:
@@ -91,7 +76,7 @@ public:
 
         // after argument : = it needs another argument
         // after argument :: = another argument is optional
-        while((c = getopt(argc, argv, "i:o:b:h")) != -1){
+        while((c = getopt(argc, argv, "i:o:b:r:ph")) != -1){
             bool s_in_switch = false;
             bool r_in_switch = false;
             switch (c){
@@ -181,8 +166,8 @@ public:
             buffer << input << std::endl;
         }
 
-        if(postfix) return parse_postfix_input(buffer);
-        else return parse_infix_input(buffer);
+        if(postfix) return expression.process_postfix_input(buffer);
+        else return expression.process_infix_input(buffer);
     }
 
     /**
@@ -210,6 +195,9 @@ public:
      * Returns true on success, false on failure.
      */
     bool output(){
+        //TODO
+        expression.print_stack();
+        return true;
         if(output_flag){
 
             std::ofstream out;
