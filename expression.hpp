@@ -25,6 +25,16 @@ std::set<char> operators = {
     '~', 'n', 'b', 'u'
 };
 
+std::set<char> arithmetic_operators = {
+    '+', '-',
+    '*', '/',
+    '^'
+};
+
+std::set<char> distribution_operators = {
+    '~', 'n', 'b', 'u'
+};
+
 template <typename real>
 class Token{
 
@@ -35,16 +45,17 @@ class Token{
     bool is_number;
     bool is_operator;
     bool is_distribution;
+    bool error_occurred;
 
 public:
 
-    Token() : number(0), is_number(true), is_operator(false), is_distribution(false) {}
+    Token() : number(0), is_number(true), is_operator(false), is_distribution(false), error_occurred(false) {}
 
-    Token(std::unique_ptr<Distribution<real>> ptr) : dist_ptr(std::move(ptr)), is_number(false), is_operator(false), is_distribution(true) {}
+    Token(std::unique_ptr<Distribution<real>> ptr) : dist_ptr(std::move(ptr)), is_number(false), is_operator(false), is_distribution(true), error_occurred(false) {}
 
-    Token(real number) : number(number), is_number(true), is_operator(false), is_distribution(false) {}
+    Token(real number) : number(number), is_number(true), is_operator(false), is_distribution(false), error_occurred(false) {}
 
-    Token(char op, int priority) : op(op), priority(priority), is_number(false), is_operator(true), is_distribution(false) {}
+    Token(char op, int priority) : op(op), priority(priority), is_number(false), is_operator(true), is_distribution(false), error_occurred(false) {}
 
     void print(){
         if(is_number){
@@ -60,14 +71,48 @@ public:
         }
     }
 
+    /**
+     * Gets two tokens and operation (+ other info) and returns Token<real>,
+     * where error_occurred is set when an error occurred.
+     */
+    static Token<real> operation(Token<real>& left, Token<real>& right, char operation, real bin_size, real std_deviation_quotient){
+
+        if(distribution_operators.find(operation) != distribution_operators.end() && 
+           left.is_number && right.is_number){
+            
+            Token<real> result(std::make_unique(Distribution<real>(operation, left, right, bin_size, std_deviation_quotient)));
+            if(result.dist_ptr->error_occurred) result.error_occurred = true;
+            return result;
+            
+        }
+        else if(arithmetic_operators.find(operation) != arithmetic_operators.end() &&
+                !left.is_operator && !right.is_operator){
+
+            //TODO ARITHMETIC OPERATION
+            return result;
+
+        }
+        else{
+            Token<real> result(0);
+            result.error_occurred = true;
+            return result;
+        }
+    }
+
 };
 
 template <typename real>
 class Expression{
 
     std::stack<Token<real>> prefix_stack;
+    real bin_size;
+    real std_deviation_quotient;
 
 public:
+
+    Expression(){}
+
+    Expression(real bin_size, real std_deviation_quotient) : bin_size(bin_size), std_deviation_quotient(std_deviation_quotient){}
 
     void print_stack(){
         while(!prefix_stack.empty()){
@@ -76,8 +121,22 @@ public:
         }
     }
 
+    bool process_operator(char op){
+        if(prefix_stack >= 2){
+            Token<real> right = prefix_stack.top();
+            prefix_stack.pop();
+            Token<real> left = prefix_stack.top();
+            prefix_stack.pop();
 
-    bool process_postfix_input(std::stringstream& input){
+            Token<real>::operation(left, right, op, bin_size, std_deviation_quotient);
+        }
+        else
+            return false;
+
+        return true;
+    }
+
+    bool evaluate_postfix_input(std::stringstream& input){
         std::string input_string;
         std::getline(input, input_string);
         input_string.erase(std::remove_if(input_string.begin(), input_string.end(), ::isspace), input_string.end());
@@ -140,7 +199,7 @@ public:
         return true;
     }
 
-    bool process_infix_input(std::stringstream& buffer){
+    bool evaluate_infix_input(std::stringstream& buffer){
 
         // real from, to;
         // buffer >> from >> to;

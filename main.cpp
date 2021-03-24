@@ -62,7 +62,8 @@ public:
                                      postfix(false),
                                      help_flag(false),
                                      output_flag(false),
-                                     input_flag(false) {}
+                                     input_flag(false),
+                                     expression(bin_size, STANDARD_DEVIATION_QUOTIENT) {}
 
 
     /**
@@ -166,8 +167,8 @@ public:
             buffer << input << std::endl;
         }
 
-        if(postfix) return expression.process_postfix_input(buffer);
-        else return expression.process_infix_input(buffer);
+        if(postfix) return expression.evaluate_postfix_input(buffer);
+        else return expression.evaluate_infix_input(buffer);
     }
 
     /**
