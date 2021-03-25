@@ -35,6 +35,8 @@ std::set<char> distribution_operators = {
     '~', 'n', 'b', 'u'
 };
 
+// TODO dat Token do jinyho filu
+
 template <typename real>
 class Token{
 
@@ -45,17 +47,54 @@ class Token{
     bool is_number;
     bool is_operator;
     bool is_distribution;
-    bool error_occurred;
+    
 
 public:
 
+    bool error_occurred;
+
     Token() : number(0), is_number(true), is_operator(false), is_distribution(false), error_occurred(false) {}
 
-    Token(std::unique_ptr<Distribution<real>> ptr) : dist_ptr(std::move(ptr)), is_number(false), is_operator(false), is_distribution(true), error_occurred(false) {}
+    Token(std::unique_ptr<Distribution<real>> ptr) : dist_ptr(std::move(ptr)), is_number(false), is_operator(false), is_distribution(true){
+        error_occurred = dist_ptr->error_occurred;
+    }
 
     Token(real number) : number(number), is_number(true), is_operator(false), is_distribution(false), error_occurred(false) {}
 
     Token(char op, int priority) : op(op), priority(priority), is_number(false), is_operator(true), is_distribution(false), error_occurred(false) {}
+
+
+    /**
+     * MOVE ASSIGNMENT
+     */
+    Token<real>& operator=(Token<real>&& second){
+        DEBUG("Assignment called");
+        if(&second == this)
+            return *this;
+        
+        dist_ptr = std::move(second.dist_ptr);
+        op = second.op;
+        priority = second.priority;
+        is_number = second.is_number;
+        is_operator = second.is_operator;
+        is_distribution = second.is_distribution;
+        error_occurred = second.error_occurred;
+        
+        return *this;
+    }
+
+    Token(Token<real>&& second){
+        DEBUG("Move constructor called");
+        
+        dist_ptr = std::move(second.dist_ptr);
+        op = second.op;
+        priority = second.priority;
+        is_number = second.is_number;
+        is_operator = second.is_operator;
+        is_distribution = second.is_distribution;
+        error_occurred = second.error_occurred;
+
+    }
 
     void print(){
         if(is_number){
@@ -72,25 +111,93 @@ public:
     }
 
     /**
-     * Gets two tokens and operation (+ other info) and returns Token<real>,
+     * Gets two tokens and operation (+ necessary) other info) and returns Token<real>,
      * where error_occurred is set when an error occurred.
+     * 
+     * For distribution operators create a distribution.
+     * 
+     * Otherwise we perform arithmetic operations.
+     * 
+     * Number op Number ... special case
+     * Otherwise we just perform the operation
+     * 
+     * Returns a Token
      */
-    static Token<real> operation(Token<real>& left, Token<real>& right, char operation, real bin_size, real std_deviation_quotient){
+    static Token<real> operation(Token<real>&& left, Token<real>&& right, char operation, real bin_size, real std_deviation_quotient){
 
+        // Create a distribution from 2 numbers (from .. to)
         if(distribution_operators.find(operation) != distribution_operators.end() && 
            left.is_number && right.is_number){
             
-            Token<real> result(std::make_unique(Distribution<real>(operation, left, right, bin_size, std_deviation_quotient)));
+            Token<real> result(std::make_unique<Distribution<real>>(operation, left.number, right.number, bin_size, std_deviation_quotient));
             if(result.dist_ptr->error_occurred) result.error_occurred = true;
             return result;
             
         }
-        else if(arithmetic_operators.find(operation) != arithmetic_operators.end() &&
-                !left.is_operator && !right.is_operator){
+        else if(arithmetic_operators.find(operation) != arithmetic_operators.end()){
+            if(left.is_number && right.is_number){
 
-            //TODO ARITHMETIC OPERATION
-            return result;
+                #define NUMBER_OPERATIONS(OPERATOR) \
+                    if(operation == #OPERATOR[0]){ \
+                    DEBUG2("Operace ", #OPERATOR); \
+                        if((#OPERATOR[0] == '/' && right.number == 0) || right.error_occurred || left.error_occurred){ \
+                            Token<real> result(0); \
+                            result.error_occurred = true; \
+                            return result; \
+                        } \
+                        Token<real> result(left.number OPERATOR right.number); \
+                        return result; \
+                    } 
 
+                NUMBER_OPERATIONS(+);
+                NUMBER_OPERATIONS(-);
+                NUMBER_OPERATIONS(*);
+                NUMBER_OPERATIONS(/);
+            }
+            else if((left.is_number || left.is_distribution) && (right.is_number || right.is_distribution)){
+
+                #define MIXED_OPERATIONS(OPERATOR) \
+                    \
+                    if(operation == #OPERATOR[0]){ \
+                        DEBUG2("Operace ", #OPERATOR); \
+                        if(right.error_occurred || left.error_occurred){ \
+                            Token<real> result(0); \
+                            result.error_occurred = true; \
+                            return result; \
+                        } \
+                        Token<real> result; \
+                        if(left.is_distribution && right.is_distribution) \
+                            result = std::make_unique<Distribution<real>>(*left.dist_ptr OPERATOR *right.dist_ptr); \
+                        else if(left.is_distribution && right.is_number) \
+                            result = std::make_unique<Distribution<real>>(*left.dist_ptr OPERATOR right.number); \
+                        else \
+                            result = std::make_unique<Distribution<real>>(left.number OPERATOR *right.dist_ptr); \
+                        if(result.dist_ptr->error_occurred) result.error_occurred = true; \
+                        return result; \
+                    } 
+                    /*
+                    if(left.is_distribution && right.is_distribution) \
+                            Token<real> result(std::make_unique<Distribution<real>>(*left.dist_ptr OPERATOR *right.dist_ptr)); \
+                            Token<real> result(std::make_unique(Distribution<real>(*left.dist_ptr OPERATOR *right.dist_ptr))); \
+                        else if(left.is_distribution && right.is_number) \
+                            Token<real> result(std::make_unique(Distribution<real>(*left.dist_ptr OPERATOR right.number))); \
+                        else \
+                            Token<real> result(std::make_unique(Distribution<real>(left.number OPERATOR *right.dist_ptr))); \
+                        if(result.dist_ptr->error_occurred) result.error_occurred = true; \
+                        return result; \
+                    } 
+                    */
+
+                MIXED_OPERATIONS(+);
+                MIXED_OPERATIONS(-);
+                MIXED_OPERATIONS(*);
+                MIXED_OPERATIONS(/);
+            }                
+            else{
+                Token<real> result(0);
+                result.error_occurred = true;
+                return result;
+            }
         }
         else{
             Token<real> result(0);
@@ -122,13 +229,13 @@ public:
     }
 
     bool process_operator(char op){
-        if(prefix_stack >= 2){
-            Token<real> right = prefix_stack.top();
+        if(prefix_stack.size() >= 2){
+            Token<real> right(std::move(prefix_stack.top()));
             prefix_stack.pop();
-            Token<real> left = prefix_stack.top();
+            Token<real> left(std::move(prefix_stack.top()));
             prefix_stack.pop();
 
-            Token<real>::operation(left, right, op, bin_size, std_deviation_quotient);
+            Token<real> result = Token<real>::operation(std::move(left), std::move(right), op, bin_size, std_deviation_quotient);
         }
         else
             return false;
@@ -136,16 +243,25 @@ public:
         return true;
     }
 
-    bool evaluate_postfix_input(std::stringstream& input){
+    bool parse_postfix_input(std::stringstream& input){
+        DEBUG("TU");
         std::string input_string;
         std::getline(input, input_string);
-        input_string.erase(std::remove_if(input_string.begin(), input_string.end(), ::isspace), input_string.end());
+        // input_string.erase(std::remove_if(input_string.begin(), input_string.end(), ::isspace), input_string.end());
         std::stringstream new_number;
         double number;
 
         int state = 1;
 
         for(long unsigned int i = 0; i < input_string.length(); i++){
+            DEBUG2("nacitame ", input_string[i]);
+            DEBUG("Top: ");
+            if(!prefix_stack.empty()) prefix_stack.top().print();
+            DEBUG("-------");
+            if(input_string[i] == '/'){
+                print_stack();
+                return false;
+            }
             if(state == 1){
                 if(std::isdigit(input_string[i]) || input_string[i] == '.'){
                     new_number << input_string[i];
@@ -153,7 +269,13 @@ public:
                     continue;
                 }
                 else if(operators.find(input_string[i]) != operators.end()){
-                    prefix_stack.push(Token<real>(input_string[i], 0)); //TODO
+
+                    if(!process_operator(input_string[i])) return false;
+
+                    // prefix_stack.push(Token<real>(input_string[i], 0)); //TODO
+                    continue;
+                }
+                else if(input_string[i] == ' '){
                     continue;
                 }
                 else return false;
@@ -167,8 +289,16 @@ public:
                 else if(operators.find(input_string[i]) != operators.end()){
                     new_number >> number;
                     new_number.clear();
-                    prefix_stack.push(Token<real>(number));
-                    prefix_stack.push(Token<real>(input_string[i], 0)); //TODO
+                    prefix_stack.emplace(number);
+                    if(!process_operator(input_string[i])) return false;
+                    // prefix_stack.push(Token<real>(input_string[i], 0)); //TODO
+                    state = 1;
+                    continue;
+                }
+                else if(input_string[i] == ' '){
+                    new_number >> number;
+                    new_number.clear();
+                    prefix_stack.emplace(number);
                     state = 1;
                     continue;
                 }
@@ -182,8 +312,16 @@ public:
                 else if(operators.find(input_string[i]) != operators.end()){
                     new_number >> number;
                     new_number.clear();
-                    prefix_stack.push(Token<real>(number));
-                    prefix_stack.push(Token<real>(input_string[i], 0)); //TODO
+                    prefix_stack.emplace(number);
+                    if(!process_operator(input_string[i])) return false;
+                    // prefix_stack.push(Token<real>(input_string[i], 0)); //TODO
+                    state = 1;
+                    continue;
+                }
+                else if(input_string[i] == ' '){
+                    new_number >> number;
+                    new_number.clear();
+                    prefix_stack.emplace(number);
                     state = 1;
                     continue;
                 }
@@ -194,18 +332,22 @@ public:
         if(state > 1){
             new_number >> number;
             // std::cout << number << std::endl;
-            prefix_stack.push(Token<real>(number));
+            prefix_stack.emplace(number);
         }
         return true;
     }
 
-    bool evaluate_infix_input(std::stringstream& buffer){
+    bool parse_infix_input(std::stringstream& buffer){
 
         // real from, to;
         // buffer >> from >> to;
         //result = Distribution<real>('n', 5, 20, bin_size, STANDARD_DEVIATION_QUOTIENT);
 
         return true;
+    }
+
+    bool evaluate(){
+
     }
 };
 

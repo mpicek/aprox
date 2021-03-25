@@ -36,9 +36,11 @@ class Distribution{
     real to;
     real standard_deviation_quotient;
     real bin_size; // TODO bin_size has to be compatible
-    bool error_occurred;
+    
 
 public:
+
+    bool error_occurred;
 
     Distribution(){}
 
@@ -343,7 +345,7 @@ public:
      */
     void print(std::ostream& ostr, int num_of_result_bins){
         if(error_occurred){
-            std::cerr << "ERROR OCCURED DURING COMPUTATION (PROBABLY DIVISION BY 0)." << std::endl;
+            std::cerr << "ERROR OCCURRED DURING COMPUTATION (PROBABLY DIVISION BY 0)." << std::endl;
             return;
         }
         ostr << "RESULT = " << from << " ~ " << to << std::endl;

@@ -167,8 +167,8 @@ public:
             buffer << input << std::endl;
         }
 
-        if(postfix) return expression.evaluate_postfix_input(buffer);
-        else return expression.evaluate_infix_input(buffer);
+        if(postfix) return expression.parse_postfix_input(buffer);
+        else return expression.parse_infix_input(buffer);
     }
 
     /**
@@ -197,7 +197,7 @@ public:
      */
     bool output(){
         //TODO
-        expression.print_stack();
+        expression.print_stack(); //TODO vymazat
         return true;
         if(output_flag){
 
@@ -226,7 +226,13 @@ public:
      * Returns true on success, false on failure (division by zero for example).
      */
     bool compute(){
-        return true;
+        if(!expression.evaluate()){
+            std::cerr << "ERROR: PROBLEM DURING EVALUATION OCCURED - PROBABLY DIVISION BY ZERO." << std::endl;
+            return false;
+        }
+        else{
+            return true;
+        }
     }
 };
 
@@ -234,10 +240,15 @@ int main(int argc, char **argv){
 
     Program<double> program(argc, argv);
     if(!program.parse_arguments()) return 1;
+    DEBUG(1);
     if(program.print_help()) return 0;
+    DEBUG(2);
     if(!program.read_input()) return 1;
+    DEBUG(3);
     if(!program.compute()) return 1;
+    DEBUG(4);
     if(!program.output()) return 1;
+    DEBUG(5);
 
     return 0;
 }
