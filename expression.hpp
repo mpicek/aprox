@@ -5,7 +5,7 @@
 #include "distribution.hpp"
 #include <set>
 
-#define DEBUG_BUILD
+// #define DEBUG_BUILD
 #ifdef DEBUG_BUILD
 #define DEBUG(x) std::cerr << x << std::endl
 #define DEBUG2(x, y) std::cerr << x << " " << y << std::endl
@@ -71,8 +71,9 @@ public:
         DEBUG("Assignment called");
         if(&second == this)
             return *this;
-        
+
         dist_ptr = std::move(second.dist_ptr);
+        number = second.number;
         op = second.op;
         priority = second.priority;
         is_number = second.is_number;
@@ -87,6 +88,7 @@ public:
         DEBUG("Move constructor called");
         
         dist_ptr = std::move(second.dist_ptr);
+        number = second.number;
         op = second.op;
         priority = second.priority;
         is_number = second.is_number;
@@ -98,15 +100,16 @@ public:
 
     void print(){
         if(is_number){
-            std::cerr << number << std::endl;
+            std::cerr << "Token je Cislo " << number << std::endl;
             return;
         }
         if(is_operator){
-            std::cerr << op << std::endl;
+            std::cerr << "Token je operator: " << op << std::endl;
             return;
         }
         if(is_distribution){
-            dist_ptr->print(std::cerr, -1);
+            std::cerr << "Token je distribuce: " << std::endl;
+            dist_ptr->print(std::cerr, 20);
         }
     }
 
@@ -124,7 +127,7 @@ public:
      * Returns a Token
      */
     static Token<real> operation(Token<real>&& left, Token<real>&& right, char operation, real bin_size, real std_deviation_quotient){
-
+        DEBUG2(left.number, right.number);
         // Create a distribution from 2 numbers (from .. to)
         if(distribution_operators.find(operation) != distribution_operators.end() && 
            left.is_number && right.is_number){
@@ -139,12 +142,14 @@ public:
 
                 #define NUMBER_OPERATIONS(OPERATOR) \
                     if(operation == #OPERATOR[0]){ \
-                    DEBUG2("Operace ", #OPERATOR); \
+                    DEBUG2("Operace (num a num", #OPERATOR); \
                         if((#OPERATOR[0] == '/' && right.number == 0) || right.error_occurred || left.error_occurred){ \
+                            DEBUG("TADYYYYYYYYYYY"); \
                             Token<real> result(0); \
                             result.error_occurred = true; \
                             return result; \
                         } \
+                        DEBUG2(left.number, right.number); \
                         Token<real> result(left.number OPERATOR right.number); \
                         return result; \
                     } 
@@ -159,7 +164,7 @@ public:
                 #define MIXED_OPERATIONS(OPERATOR) \
                     \
                     if(operation == #OPERATOR[0]){ \
-                        DEBUG2("Operace ", #OPERATOR); \
+                        DEBUG2("Operace (num a dist) ", #OPERATOR); \
                         if(right.error_occurred || left.error_occurred){ \
                             Token<real> result(0); \
                             result.error_occurred = true; \
@@ -204,6 +209,7 @@ public:
             result.error_occurred = true;
             return result;
         }
+        return true;
     }
 
 };
@@ -230,12 +236,17 @@ public:
 
     bool process_operator(char op){
         if(prefix_stack.size() >= 2){
+            // prefix_stack.top().print();
             Token<real> right(std::move(prefix_stack.top()));
             prefix_stack.pop();
+            // prefix_stack.top().print();
             Token<real> left(std::move(prefix_stack.top()));
             prefix_stack.pop();
 
+            // left.print();
+            // right.print();
             Token<real> result = Token<real>::operation(std::move(left), std::move(right), op, bin_size, std_deviation_quotient);
+            prefix_stack.emplace(std::move(result));
         }
         else
             return false;
@@ -255,13 +266,14 @@ public:
 
         for(long unsigned int i = 0; i < input_string.length(); i++){
             DEBUG2("nacitame ", input_string[i]);
+            DEBUG2("Size: ", prefix_stack.size());
             DEBUG("Top: ");
-            if(!prefix_stack.empty()) prefix_stack.top().print();
+            // if(!prefix_stack.empty()) prefix_stack.top().print();
             DEBUG("-------");
-            if(input_string[i] == '/'){
-                print_stack();
-                return false;
-            }
+            // if(input_string[i] == '/'){
+            //     print_stack();
+            //     return false;
+            // }
             if(state == 1){
                 if(std::isdigit(input_string[i]) || input_string[i] == '.'){
                     new_number << input_string[i];
@@ -347,7 +359,7 @@ public:
     }
 
     bool evaluate(){
-
+        return true;
     }
 };
 

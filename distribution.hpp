@@ -14,7 +14,7 @@
 #define DIVISION_ERROR 10
 #define PRINT_BLOCK_PER_PROBABILITY 0.003
 
-#define DEBUG_BUILD
+// #define DEBUG_BUILD
 #ifdef DEBUG_BUILD
 #define DEBUG(x) std::cerr << x << std::endl
 #define DEBUG2(x, y) std::cerr << x << " " << y << std::endl
@@ -133,7 +133,8 @@ public:
     }
 
     void create_uniform_distribution(){
-        real uniform_value = 1 / return_num_of_bins();
+        real uniform_value = (float)1 / return_num_of_bins();
+        std::cout << uniform_value << std::endl;
 
         for(real i = from; i <= to; i += bin_size){
             distribution[i] = uniform_value;
@@ -346,7 +347,7 @@ public:
     void print(std::ostream& ostr, int num_of_result_bins){
         if(error_occurred){
             std::cerr << "ERROR OCCURRED DURING COMPUTATION (PROBABLY DIVISION BY 0)." << std::endl;
-            return;
+            return; // TODO musime vracet false omg a ukoncit program!!!!
         }
         ostr << "RESULT = " << from << " ~ " << to << std::endl;
         ostr << std::endl;
@@ -393,6 +394,11 @@ public:
             return new_dist;
         }
         new_dist.error_occurred = false;
+
+        if(from <= 0 && to >= 0){
+            new_dist.error_occurred = true;
+            return new_dist;
+        }
 
         // TODO: vyresit deleni nulou
         for (auto&& element : distribution){

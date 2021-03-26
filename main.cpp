@@ -17,7 +17,7 @@
 // TODO: pridat const
 //TODO smazat floaty a doubly, jestli je nekde mam
 
-#define DEBUG_BUILD
+// #define DEBUG_BUILD
 #ifdef DEBUG_BUILD
 #define DEBUG(x) std::cerr << x << std::endl
 #define DEBUG2(x, y) std::cerr << x << " " << y << std::endl
