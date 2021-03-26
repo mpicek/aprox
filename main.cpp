@@ -13,7 +13,6 @@
 #define NUM_OF_RESULT_BINS_DEFAULT 25
 #define STANDARD_DEVIATION_QUOTIENT 2
 
-// Returns true on success, false on failure.
 // TODO: pridat const
 //TODO smazat floaty a doubly, jestli je nekde mam
 
@@ -38,6 +37,8 @@ class Program{
     char **argv;
 
     real bin_size; // size of the bins in which the distributions are stored
+
+    // number of bins into which the result will be stored
     int num_of_result_bins;
 
     bool postfix;
@@ -50,8 +51,8 @@ class Program{
     bool input_flag;
     char* input_file_name;
 
-    Distribution<real> result; // probably unnecessary ... TODO potrebuju kvuli tyhle blbosti default constructor :(
     Expression<real> expression;
+    std::stringstream input_buffer;
 
 
 public:
@@ -64,7 +65,6 @@ public:
                                      output_flag(false),
                                      input_flag(false),
                                      expression(bin_size, STANDARD_DEVIATION_QUOTIENT) {}
-
 
     /**
      * Parses arguments using getopt.
@@ -140,18 +140,17 @@ public:
     }
 
     /**
-     * 
+     * Reads input from either cin or a file. Saves it into the input_buffer.
      * Returns true on success, false on failure.
      */
     bool read_input(){
-        std::stringstream buffer; // We put the whole file into the buffer
 
-        if(input_flag){
+        if(input_flag){ // We put the whole file into the input_buffer
             std::ifstream input_file(input_file_name);
 
             // Check whether the file is correctly opened or not
             if(input_file.is_open()){
-                buffer << input_file.rdbuf(); // Load the file into the buffer
+                input_buffer << input_file.rdbuf(); // Load the file into the input_buffer
                 input_file.close();
             }
             else{
@@ -164,11 +163,8 @@ public:
         else{ // If no file specified, read the input from stdin
             std::string input;
             std::getline(std::cin, input);
-            buffer << input << std::endl;
+            input_buffer << input << std::endl;
         }
-
-        if(postfix) return expression.parse_postfix_input(buffer);
-        else return expression.parse_infix_input(buffer);
     }
 
     /**
@@ -189,50 +185,54 @@ public:
         return false;
     }
 
-    
-
     /**
-     * 
+     * Prints the result.
      * Returns true on success, false on failure.
      */
     bool output(){
         //TODO
-        expression.print_stack(); //TODO vymazat
-        return true;
-        if(output_flag){
+        bool success = true;
 
+        if(output_flag){
             std::ofstream out;
             out.open(output_file_name);
 
             // TODO JE TEN SOUBOR DOBRE OSETRENEJ?
             // https://stackoverflow.com/questions/29811986/c-function-cout-redirect-to-file
             if(out.is_open()){
-                result.print(out, num_of_result_bins);
+                success = expression.print_result(out, num_of_result_bins);
                 out.close();
-                return true;
+                return success;
             }
             else{
                 return false;
             }
         }
         else{
-            result.print(std::cout, num_of_result_bins);
-            return true;
+            success = expression.print_result(std::cout, num_of_result_bins);
+            return success;
         }
     }
 
     /**
-     * 
+     * Computes the result from the expression.
      * Returns true on success, false on failure (division by zero for example).
      */
     bool compute(){
-        if(!expression.evaluate()){
-            std::cerr << "ERROR: PROBLEM DURING EVALUATION OCCURED - PROBABLY DIVISION BY ZERO." << std::endl;
-            return false;
+        if(postfix){
+            if(!expression.parse_postfix_input(input_buffer)){
+                std::cerr << "ERROR: PROBLEM DURING EVALUATION OCCURED - PROBABLY DIVISION BY ZERO." << std::endl;
+                return false;
+            }
         }
         else{
-            return true;
+            if(!expression.parse_infix_input(input_buffer)){
+                std::cerr << "ERROR: PROBLEM DURING EVALUATION OCCURED - PROBABLY DIVISION BY ZERO." << std::endl;
+                return false;
+            }
         }
+        
+        return true;
     }
 };
 

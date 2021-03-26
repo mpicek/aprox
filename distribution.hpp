@@ -48,6 +48,9 @@ public:
                                                                      bin_size(bin_size), 
                                                                      error_occurred(false) {}
 
+    /**
+     * Creates distribution. If error occurred, it is saved in error_occurred.
+     */
     //TODO nastavitelnej standard_deviation_quotient (tzn. nastavitelny variance)
     Distribution(char type, real from_param, real to_param, real bin_size, 
                  real standard_deviation_quotient) : 
@@ -60,11 +63,17 @@ public:
         to = nearest_bin(to_param);
 
         // when from > to, the distribution is not correct
-        if(from >= to){
+        if(from > to){
             error_occurred = true;
             return;
         }
         else error_occurred = false;
+
+        // if distribution is just a single value
+        if(from == to){
+            distribution[from] = 1;
+            return;
+        }
 
         switch (type){
             case '~': // normal distribution
@@ -115,6 +124,10 @@ public:
         return *this;
     }
 
+    /**
+     * Creates normal distribution with standard_deviation_quotient defined
+     * in arguments. Mean is computed from variables from and to.
+     */
     void create_normal_distribution(real standard_deviation_quotient){
         
         real mean = from + ((to-from) / 2);
@@ -132,8 +145,11 @@ public:
         distribution[to] += (1-sum)/2;
     }
 
+    /**
+     * Creates uniform distribution.
+     */
     void create_uniform_distribution(){
-        real uniform_value = (float)1 / return_num_of_bins();
+        real uniform_value = (real)1 / return_num_of_bins();
         std::cout << uniform_value << std::endl;
 
         for(real i = from; i <= to; i += bin_size){
@@ -141,18 +157,32 @@ public:
         }
     }
 
+    /**
+     * Creates binomial distribution.
+     */
+    //TODO
     void create_binomial_distribution(){}
 
+    /**
+     * Finds nearest bin into which the number should go.
+     */
     real nearest_bin(real number){
         int multiple = round((number-from) / bin_size);
         return multiple * bin_size + from;
     }
 
+    /**
+     * Finds nearest bin into which the number should go, but the another_bin_size
+     * is different from the bin_size of the distribution.
+     */
     real nearest_bin(real number, real another_bin_size){
         int multiple = round((number-from) / another_bin_size);
         return multiple * another_bin_size + from;
     }
 
+    /**
+     * Normalizes distribution so that the sum equals 1.
+     */
     void normalize(){
         real sum = 0;
         for(auto&& element : distribution){
@@ -163,6 +193,9 @@ public:
         }
     }
 
+    /**
+     * Returns the number of bins of the distribution.
+     */
     unsigned int return_num_of_bins(){
         return (to - from + bin_size) / bin_size;
     }
@@ -438,7 +471,9 @@ Distribution<real> operator*(const real scalar, Distribution<real> dist){
     return dist * scalar;
 }
 
-
+/**
+ * Divison - not commutative
+ */
 template <typename real>
 Distribution<real> operator/(const real scalar, Distribution<real> dist){
     return dist.divide_scalar_numerator(scalar);
