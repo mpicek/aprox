@@ -222,13 +222,17 @@ public:
     bool compute(){
         if(postfix){
             if(!expression.parse_postfix_input(input_buffer)){
-                std::cerr << "ERROR: PROBLEM DURING EVALUATION OCCURED - PROBABLY DIVISION BY ZERO." << std::endl;
+                std::cerr << "ERROR: PROBLEM DURING EVALUATION OCCURED - PROBABLY WHAT HAPPENED:" << std::endl;
+                std::cerr << "     - DIVISION BY ZERO (BEWARE OF DISTRIBUTIONS WHICH INCLUDE ZERO)" << std::endl;
+                std::cerr << "     - WRONG INPUT (ERROR IN FORMAT - NOT ENOUGH OPERANDS, TOO MANY OPERANDS, NO MATCHING PARENTHESES,.." << std::endl;
                 return false;
             }
         }
         else{
             if(!expression.parse_infix_input(input_buffer)){
-                std::cerr << "ERROR: PROBLEM DURING EVALUATION OCCURED - PROBABLY DIVISION BY ZERO." << std::endl;
+                std::cerr << "ERROR: PROBLEM DURING EVALUATION OCCURED - PROBABLY WHAT HAPPENED:" << std::endl;
+                std::cerr << "     - DIVISION BY ZERO (BEWARE OF DISTRIBUTIONS WHICH INCLUDE ZERO)" << std::endl;
+                std::cerr << "     - WRONG INPUT (ERROR IN FORMAT - NOT ENOUGH OPERANDS, TOO MANY OPERANDS, NO MATCHING PARENTHESES,.." << std::endl;
                 return false;
             }
         }

@@ -299,6 +299,7 @@ public:
     bool parse_postfix_input(std::stringstream& input){
         std::string input_string;
         std::getline(input, input_string);
+        std::cout << input_string << std::endl;
         std::stringstream new_number;
         real number;
 
@@ -470,6 +471,9 @@ public:
                     state = 1;
                     continue;
                 }
+                else if(input_string[i] == '('){
+                    continue;
+                }
                 else{
                     state = 1;
                     continue;
@@ -599,6 +603,7 @@ public:
         // a distribution or a number
         if(prefix_stack.size() == 1){
             if(prefix_stack.top().get_is_operator()) return false;
+            if(prefix_stack.top().error_occurred) return false;
             prefix_stack.top().print(ostr, num_of_result_bins);
         }
         else{
