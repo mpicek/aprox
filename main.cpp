@@ -13,22 +13,6 @@
 #define NUM_OF_RESULT_BINS_DEFAULT 25
 #define STANDARD_DEVIATION_QUOTIENT 2
 
-// TODO: pridat const
-//TODO smazat floaty a doubly, jestli je nekde mam
-
-// #define DEBUG_BUILD
-#ifdef DEBUG_BUILD
-#define DEBUG(x) std::cerr << x << std::endl
-#define DEBUG2(x, y) std::cerr << x << " " << y << std::endl
-#else
-#define DEBUG(x)                                                               \
-  do {                                                                         \
-  } while (0)
-#define DEBUG2(x, y)                                                           \
-  do {                                                                         \
-  } while (0)
-#endif
-
 // real is the type that represents the real number
 template <typename real>
 class Program{
@@ -202,8 +186,6 @@ public:
             std::ofstream out;
             out.open(output_file_name);
 
-            // TODO JE TEN SOUBOR DOBRE OSETRENEJ?
-            // https://stackoverflow.com/questions/29811986/c-function-cout-redirect-to-file
             if(out.is_open()){
                 success = expression.print_result(out, num_of_result_bins);
                 out.close();
@@ -249,15 +231,10 @@ int main(int argc, char **argv){
 
     Program<double> program(argc, argv);
     if(!program.parse_arguments()) return 1;
-    DEBUG(1);
     if(program.print_help()) return 0;
-    DEBUG(2);
     if(!program.read_input()) return 1;
-    DEBUG(3);
     if(!program.compute()) return 1;
-    DEBUG(4);
     if(!program.output()) return 1;
-    DEBUG(5);
 
     return 0;
 }
