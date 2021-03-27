@@ -4,6 +4,7 @@
 #include <stack>
 #include "distribution.hpp"
 #include <set>
+#include <map>
 
 // #define DEBUG_BUILD
 #ifdef DEBUG_BUILD
@@ -21,18 +22,28 @@
 std::set<char> operators = {
     '+', '-',
     '*', '/',
-    '^',
     '~', 'n', 'b', 'u'
 };
 
 std::set<char> arithmetic_operators = {
     '+', '-',
     '*', '/',
-    '^'
 };
 
 std::set<char> distribution_operators = {
     '~', 'n', 'b', 'u'
+};
+
+std::map<char, int> op_priorities ={
+    {'(', 0}, // special operator (opening bracket) .. only for infix to postfix
+    {'+', 1},
+    {'-', 1},
+    {'*', 2},
+    {'/', 2},
+    {'~', 3},
+    {'n', 3},
+    {'b', 3},
+    {'u', 3},
 };
 
 // TODO dat Token do jinyho filu
@@ -59,6 +70,10 @@ public:
 
     bool get_is_operator(){
         return is_operator;
+    }
+
+    char get_op(){
+        return op;
     }
 
     bool error_occurred; // public flag indicating that something wrong happened
@@ -231,6 +246,7 @@ template <typename real>
 class Expression{
 
     std::stack<Token<real>> prefix_stack;
+    std::stack<Token<real>> infix_help_stack;
     real bin_size;
     real std_deviation_quotient;
 
@@ -296,16 +312,19 @@ public:
             // DEBUG("-------");
 
             if(state == 1){ // first state - nothing read
+                // digit or '.'
                 if(std::isdigit(input_string[i]) || input_string[i] == '.'){
                     new_number << input_string[i];
                     state++;
                     continue;
                 }
+                // operator
                 else if(operators.find(input_string[i]) != operators.end()){
 
                     if(!process_operator(input_string[i])) return false;
                     continue;
                 }
+                // space
                 else if(input_string[i] == ' '){
                     continue;
                 }
@@ -314,11 +333,13 @@ public:
             // second state - in process of reading a number,
             //                no decimal point encountered yet
             if(state == 2){ 
+                // digit or '.'
                 if(std::isdigit(input_string[i]) || input_string[i] == '.'){
                     new_number << input_string[i];
                     if(input_string[i] == '.') state++;
                     continue;
                 }
+                // operator
                 else if(operators.find(input_string[i]) != operators.end()){
                     new_number >> number;
                     new_number.clear();
@@ -327,6 +348,7 @@ public:
                     state = 1;
                     continue;
                 }
+                // space
                 else if(input_string[i] == ' '){
                     new_number >> number;
                     new_number.clear();
@@ -339,10 +361,12 @@ public:
             // third state - in process of reading a number,
             //               a decimal point encountered
             if(state == 3){
+                // digit (and not a '.'!)
                 if(std::isdigit(input_string[i])){
                     new_number << input_string[i];
                     continue;
                 }
+                // operator
                 else if(operators.find(input_string[i]) != operators.end()){
                     new_number >> number;
                     new_number.clear();
@@ -352,6 +376,7 @@ public:
                     state = 1;
                     continue;
                 }
+                // space
                 else if(input_string[i] == ' '){
                     new_number >> number;
                     new_number.clear();
@@ -362,7 +387,7 @@ public:
                 else return false;
             }
         }
-        // if we started to read a number, gets the last number
+        // if we started to read a number, get the last number
         if(state > 1){
             new_number >> number;
             prefix_stack.emplace(number);
@@ -370,9 +395,199 @@ public:
         return true;
     }
 
-    bool parse_infix_input(std::stringstream& buffer){
 
-        return true;
+    bool process_operator_infix(char op, std::stringstream& output){
+        if(op == '('){ // if '(' is the operator, we just put it into the stack
+            infix_help_stack.emplace(op, op_priorities[op]);
+            return true;
+        }
+        else if(op == ')'){
+            // move all operators before '(' to the output
+            while(!infix_help_stack.empty() && infix_help_stack.top().get_op() != '('){
+                output << " " << infix_help_stack.top().get_op() << " "; // move operator to output
+                infix_help_stack.pop(); // and pop the operator
+            }
+            if(infix_help_stack.empty()){ // no '(' was found
+                return false;
+            }
+            if(infix_help_stack.top().get_op() == '('){ // if '(' was found, we are done
+                infix_help_stack.pop();
+                return true;
+            }
+            return false;
+        }
+        else{
+            // move operators with same or higher priority to the output
+            while(!infix_help_stack.empty() && 
+                  op_priorities[op] <= op_priorities[infix_help_stack.top().get_op()]){
+                output << " " << infix_help_stack.top().get_op() << " "; // move operator to output
+                infix_help_stack.pop(); // and pop the operator
+            }
+            // put op into the stack
+            infix_help_stack.emplace(op, op_priorities[op]);
+            return true;
+        }
+    }
+
+    /**
+     * Parsing infix. We convert infix to postfix and then we parse postfix.
+     * We need to tackle 2 problems: When minus is at the beginning and when
+     * minus is in the middle of the expression right after `(`.
+     * First problem is converted to the second one by appending `(` to the
+     * beginning and `)` to the end of the expression.
+     * Then whenever we find "( -" we just put zero between.
+     *
+     * Input: stringstream
+     * Returns: bool (success)
+     */
+    bool parse_infix_input(std::stringstream& input){
+        std::string input_string;
+        std::getline(input, input_string);
+
+        input_string.insert(input_string.begin(), '(');
+        input_string.insert(input_string.begin() + input_string.length(), ')');
+
+        std::cout << input_string << std::endl;
+
+        std::stack<size_t> positions;
+
+        int state = 1;
+        for(size_t i = 0; i < input_string.length(); i++){
+
+            if(state == 1){
+                if(input_string[i] == '('){
+                    state = 2;
+                    continue;
+                }
+                else continue;
+            }
+            else{
+                if(input_string[i] == ' '){
+                    continue;
+                }
+                else if(input_string[i] == '-'){
+                    positions.push(i);
+                    state = 1;
+                    continue;
+                }
+                else{
+                    state = 1;
+                    continue;
+                }
+            }
+        }
+
+        // Insert zeros where necessary (but we do it from end as the length
+        // of the string changes)
+        while(!positions.empty()){
+            size_t position = positions.top();
+            positions.pop();
+            input_string.insert(input_string.begin() + position, '0');
+        }
+
+        std::cout << input_string << std::endl;
+
+        std::stringstream new_number;
+        real number;
+
+
+        std::stringstream output; // this will be output for postfix
+
+        state = 1;
+
+
+        for(long unsigned int i = 0; i < input_string.length(); i++){
+
+            if(state == 1){ // first state - nothing read
+                // digit or '.'
+                if(std::isdigit(input_string[i]) || input_string[i] == '.'){
+                    new_number << input_string[i];
+                    state++;
+                    continue;
+                }
+                // operator
+                else if(operators.find(input_string[i]) != operators.end() || input_string[i] == '(' || input_string[i] == ')'){
+
+                    if(!process_operator_infix(input_string[i], output)) return false; // TODO dat if(!) ... return false
+                    continue;
+                }
+                // space
+                else if(input_string[i] == ' '){
+                    continue;
+                }
+                else return false;
+            }
+            // second state - in process of reading a number,
+            //                no decimal point encountered yet
+            if(state == 2){ 
+                // digit or '.'
+                if(std::isdigit(input_string[i]) || input_string[i] == '.'){
+                    new_number << input_string[i];
+                    if(input_string[i] == '.') state++;
+                    continue;
+                }
+                // operator
+                else if(operators.find(input_string[i]) != operators.end() || input_string[i] == '(' || input_string[i] == ')'){
+                    new_number >> number;
+                    new_number.clear();
+                    output << " " << number << " ";
+                    if(!process_operator_infix(input_string[i], output)) return false;
+                    //if(!process_operator(input_string[i])) return false; // TODO zmenit
+                    state = 1;
+                    continue;
+                }
+                // space
+                else if(input_string[i] == ' '){
+                    new_number >> number;
+                    new_number.clear();
+                    output << " " << number << " ";
+                    state = 1;
+                    continue;
+                }
+                else return false;
+            }
+            // third state - in process of reading a number,
+            //               a decimal point encountered
+            if(state == 3){
+                // digit (and not a '.'!)
+                if(std::isdigit(input_string[i])){
+                    new_number << input_string[i];
+                    continue;
+                }
+                // operator
+                else if(operators.find(input_string[i]) != operators.end() || input_string[i] == '(' || input_string[i] == ')'){
+                    new_number >> number;
+                    new_number.clear();
+                    output << " " << number << " ";
+                    if(!process_operator_infix(input_string[i], output)) return false;
+                    // if(!process_operator(input_string[i])) return false; // TODO zmenit
+                    // prefix_stack.push(Token<real>(input_string[i], 0)); //TODO
+                    state = 1;
+                    continue;
+                }
+                // space
+                else if(input_string[i] == ' '){
+                    new_number >> number;
+                    new_number.clear();
+                    output << " " << number << " ";
+                    state = 1;
+                    continue;
+                }
+                else return false;
+            }
+        }
+        // if we started to read a number, get the last number
+        if(state > 1){
+            new_number >> number;
+            output << " " << number << " ";
+        }
+
+        while(!infix_help_stack.empty()){ // put all operators from stack to the ouptut
+            output << " " << infix_help_stack.top().get_op() << " "; // move operator to output
+            infix_help_stack.pop(); // and pop the operator
+        }
+
+        return parse_postfix_input(output);
     }
 
     /**

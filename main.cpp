@@ -165,6 +165,7 @@ public:
             std::getline(std::cin, input);
             input_buffer << input << std::endl;
         }
+        return true;
     }
 
     /**
