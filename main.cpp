@@ -117,6 +117,10 @@ public:
                 if(!(tmp >> bin_size)){
                     std::cout << "ERROR: UNABLE TO READ BIN SIZE, SETTING BIN_SIZE TO 1 (DEFAULT)." << std::endl;
                     bin_size = 1;
+                    expression.bin_size = 1;
+                }
+                else{
+                    expression.bin_size = bin_size;
                 }
             }
 

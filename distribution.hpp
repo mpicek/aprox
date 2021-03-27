@@ -1,7 +1,6 @@
 #ifndef DISTRIBUTION_HPP_
 #define DISTRIBUTION_HPP_
 
-//TODO promazat nepotrebny knihovny
 #include <iostream>
 #include <unistd.h>
 #include <sstream>
@@ -11,7 +10,7 @@
 #include <string>
 #include <boost/math/distributions/normal.hpp>
 
-#define DIVISION_ERROR 10
+#define DIVISION_ERROR 100
 #define PRINT_BLOCK_PER_PROBABILITY 0.003
 
 // #define DEBUG_BUILD
@@ -35,7 +34,7 @@ class Distribution{
     real from;
     real to;
     real standard_deviation_quotient;
-    real bin_size; // TODO bin_size has to be compatible
+    real bin_size;
     
 
 public:
@@ -51,7 +50,6 @@ public:
     /**
      * Creates distribution. If error occurred, it is saved in error_occurred.
      */
-    //TODO nastavitelnej standard_deviation_quotient (tzn. nastavitelny variance)
     Distribution(char type, real from_param, real to_param, real bin_size, 
                  real standard_deviation_quotient) : 
                                                               type(type),
@@ -84,9 +82,6 @@ public:
                 break;
             case 'u': // uniform distribution
                 create_uniform_distribution();
-                break;
-            case 'b': // binomial distribution
-                create_binomial_distribution();
                 break;
         default:
             break;
@@ -136,13 +131,11 @@ public:
 
         auto dist = boost::math::normal_distribution<real>(mean, standard_deviation);
         for(real i = from; i <= to; i += bin_size){
-            distribution[i] = boost::math::pdf(dist, i);
+            distribution[i] = boost::math::pdf(dist, i); // sampling from pdf
             sum += distribution[i];
         }
 
-        // so that the sum equals 1
-        distribution[from] += (1-sum)/2;
-        distribution[to] += (1-sum)/2;
+        normalize(); // normalizing the distribution
     }
 
     /**
@@ -150,18 +143,12 @@ public:
      */
     void create_uniform_distribution(){
         real uniform_value = (real)1 / return_num_of_bins();
-        std::cout << uniform_value << std::endl;
 
         for(real i = from; i <= to; i += bin_size){
             distribution[i] = uniform_value;
         }
+        
     }
-
-    /**
-     * Creates binomial distribution.
-     */
-    //TODO
-    void create_binomial_distribution(){}
 
     /**
      * Finds nearest bin into which the number should go.
@@ -200,15 +187,16 @@ public:
         return (to - from + bin_size) / bin_size;
     }
 
+
     Distribution operator+(const Distribution &second){
-        Distribution<real> new_dist = Distribution<real>('m', bin_size); // m stands for mixed TODO
+        Distribution<real> new_dist = Distribution<real>('m', bin_size);
         if(error_occurred || second.error_occurred){
             new_dist.error_occurred = true;
             return new_dist;
         }
         new_dist.error_occurred = false;
         
-
+        // sum of two distributions (each element with each)
         for (auto&& element1 : distribution){
             for (auto&& element2 : second.distribution){
                 // already in new_dist
@@ -222,15 +210,14 @@ public:
         }
 
         new_dist.from = new_dist.distribution.begin()->first;
-        new_dist.to = new_dist.distribution.rbegin()->first; //TODO opravdu spravne?
+        new_dist.to = new_dist.distribution.rbegin()->first;
 
         new_dist.normalize();
         return new_dist;
     }
 
     Distribution operator+(const real scalar){
-        // TODO opravit (to *this)
-        Distribution<real> new_dist = Distribution<real>(*this); // m stands for mixed TODO
+        Distribution<real> new_dist = Distribution<real>(*this);
         if(error_occurred){
             new_dist.error_occurred = true;
             return new_dist;
@@ -249,13 +236,14 @@ public:
     }
 
     Distribution operator-(const Distribution &second){
-        Distribution<real> new_dist = Distribution<real>('m', bin_size); // m stands for mixed TODO
+        Distribution<real> new_dist = Distribution<real>('m', bin_size);
         if(error_occurred || second.error_occurred){
             new_dist.error_occurred = true;
             return new_dist;
         }
         new_dist.error_occurred = false;
 
+        // difference of two distributions (each element with each)
         for (auto&& element1 : distribution){
             for (auto&& element2 : second.distribution){
                 // already in new_dist
@@ -269,14 +257,14 @@ public:
         }
 
         new_dist.from = new_dist.distribution.begin()->first;
-        new_dist.to = new_dist.distribution.rbegin()->first; //TODO opravdu spravne?
+        new_dist.to = new_dist.distribution.rbegin()->first;
 
         new_dist.normalize();
         return new_dist;
     }
 
     Distribution operator-(const real scalar){
-        Distribution<real> new_dist = Distribution<real>(*this); // m stands for mixed TODO
+        Distribution<real> new_dist = Distribution<real>(*this);
         if(error_occurred){
             new_dist.error_occurred = true;
             return new_dist;
@@ -295,13 +283,14 @@ public:
     }
 
     Distribution operator*(const Distribution &second){
-        Distribution<real> new_dist = Distribution<real>('m', bin_size); // m stands for mixed TODO
+        Distribution<real> new_dist = Distribution<real>('m', bin_size);
         if(error_occurred || second.error_occurred){
             new_dist.error_occurred = true;
             return new_dist;
         }
         new_dist.error_occurred = false;
 
+        // product of two distributions (each element with each)
         for (auto&& element1 : distribution){
             for (auto&& element2 : second.distribution){
                 // already in new_dist
@@ -315,7 +304,7 @@ public:
         }
 
         new_dist.from = new_dist.distribution.begin()->first;
-        new_dist.to = new_dist.distribution.rbegin()->first; //TODO opravdu spravne?
+        new_dist.to = new_dist.distribution.rbegin()->first;
 
         new_dist.normalize();
 
@@ -323,7 +312,7 @@ public:
     }
 
     Distribution operator*(const real scalar){
-        Distribution<real> new_dist = Distribution<real>(*this); // m stands for mixed TODO
+        Distribution<real> new_dist = Distribution<real>(*this);
         if(error_occurred){
             new_dist.error_occurred = true;
             return new_dist;
@@ -340,20 +329,24 @@ public:
         return new_dist;
     }
 
-    Distribution operator/(const Distribution &second){
-        Distribution<real> prepared_for_division = divide_scalar_numerator(1);
-        if(prepared_for_division.error_occurred || second.error_occurred || (second.from < 0 && second.to > 0)){
+    /**
+     * We just transfer division to product with the help of the function
+     * divide_scalar_numerator (each element becomes (1/element)). Than we
+     * multiply this new distribution with the first one.
+     */
+    Distribution operator/(Distribution &second){
+        Distribution<real> prepared_for_division = second.divide_scalar_numerator(1);
+        if(prepared_for_division.error_occurred || error_occurred){
             prepared_for_division.error_occurred = true;
             return prepared_for_division;
         }
         prepared_for_division.error_occurred = false;
 
-        return prepared_for_division * second;
+        return prepared_for_division * *this; // product
     }
 
     Distribution operator/(const real scalar){
-        // TODO opravit
-        Distribution<real> new_dist = Distribution<real>(*this); // m stands for mixed TODO
+        Distribution<real> new_dist = Distribution<real>(*this);
         if(error_occurred || scalar == 0){
             new_dist.error_occurred = true;
             return new_dist;
@@ -367,75 +360,79 @@ public:
         new_dist.from = nearest_bin(from / scalar);
         new_dist.to = nearest_bin(to / scalar);
         new_dist.distribution = new_map;
+
+        new_dist.normalize();
         return new_dist;
     }
 
+    /**
+     * Rounding of the number so that we avoid errors (mainly in indexing).
+     */
     real error_rounding(real number){
         return round(number * DIVISION_ERROR) / DIVISION_ERROR;
     }
 
     /**
-     * num_of_result_bins ... -1 (print every bin)
+     * Prints the distribution.
+     * If num_of_result_bins = -1 then print every bin we have in the distribution
      */
     void print(std::ostream& ostr, int num_of_result_bins){
         if(error_occurred){
-            std::cerr << "ERROR OCCURRED DURING COMPUTATION (PROBABLY DIVISION BY 0)." << std::endl;
-            return; // TODO musime vracet false omg a ukoncit program!!!!
+            std::cerr << "ERROR OCCURRED DURING COMPUTATION." << std::endl;
+            return;
         }
+
         ostr << "RESULT = " << from << " ~ " << to << std::endl;
         ostr << std::endl;
         real sum = 0;
 
-        // print return_num_of_bins() bins
-        if (num_of_result_bins == -1 || (int)return_num_of_bins() < num_of_result_bins){
-            for (real i = to; i >= from; i -= bin_size){
-                ostr << std::right << std::setw(9) << i << "  "; // TODO zlepsit mezeru
-                if(distribution.find(i) != distribution.end()){
-                    sum += distribution[i];
-                    int hvezd = distribution[i] / PRINT_BLOCK_PER_PROBABILITY;
-                    for(int h = 0; h <= hvezd; h++) ostr << "*";
-                }
-                ostr << std::endl;
-            }
+        real new_bin_size; // bin size might differ depending on the number of bins
+        if(num_of_result_bins == -1){
+            new_bin_size = bin_size;
         }
-        else{ // otherwise print num_of_result_bins bins
-            real new_bin_size = (to - from) / (num_of_result_bins - 1);
-            std::map<real, real> tmp;
+        else{
+            new_bin_size = (to - from) / (num_of_result_bins - 1);
+        }
+            
+        std::map<real, real> tmp; // temporary map in which we will sum the distribution
 
-            for(real i = 0; i < num_of_result_bins; i++) tmp[error_rounding(nearest_bin(i*new_bin_size + from, new_bin_size))] = 0;
+        // For each element in the distribution we find the bin into which
+        // it sould go in the new shortened distribution. At first we just initialize it.
+        for(real i = 0; i < num_of_result_bins; i++) tmp[error_rounding(nearest_bin(i*new_bin_size + from, new_bin_size))] = 0;
 
-            for(auto&& element : distribution){
-                tmp[error_rounding(nearest_bin(element.first, new_bin_size))] += element.second;
-            }
-
-            for(auto element = tmp.rbegin(); element != tmp.rend(); ++element){
-                sum += element->second;
-                int hvezd = element->second / PRINT_BLOCK_PER_PROBABILITY;
-                ostr << std::right << std::setw(9) << element->first << "  "; // TODO zlepsit mezeru
-                for(int h = 0; h <= hvezd; h++) ostr << "*";
-                ostr << std::endl;
-            }
+        // Now we sum it in the tmp distribution.
+        for(auto&& element : distribution){
+            tmp[error_rounding(nearest_bin(element.first, new_bin_size))] += element.second;
         }
 
-        DEBUG2("SUM = ", sum);
+        // Printing
+        for(auto element = tmp.rbegin(); element != tmp.rend(); ++element){
+            sum += element->second;
+            int hvezd = element->second / PRINT_BLOCK_PER_PROBABILITY;
+            ostr << std::right << std::setw(9) << element->first << "  ";
+            for(int h = 0; h <= hvezd; h++) ostr << "*";
+            ostr << std::endl;
+        }
     }
 
+    /**
+     * Makes operation: scalar / distribution.
+     */
     Distribution divide_scalar_numerator(real scalar){
-        Distribution<real> new_dist = Distribution<real>('m', bin_size); // m stands for mixed TODO
+        Distribution<real> new_dist = Distribution<real>('m', bin_size);
         if(error_occurred){
             new_dist.error_occurred = true;
             return new_dist;
         }
         new_dist.error_occurred = false;
 
+        // division by zero
         if(from <= 0 && to >= 0){
             new_dist.error_occurred = true;
             return new_dist;
         }
 
-        // TODO: vyresit deleni nulou
         for (auto&& element : distribution){
-            // TODO NEAREST BIN NEBUDE FUNGOVAT, PROTOZE TAM NEPLATI TA PROMENNA FROM
             new_dist.distribution[nearest_bin(scalar/element.first)] = element.second;
             DEBUG(nearest_bin(scalar/element.first));
         }

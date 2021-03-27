@@ -22,7 +22,7 @@
 std::set<char> operators = {
     '+', '-',
     '*', '/',
-    '~', 'n', 'b', 'u'
+    '~', 'n', 'u'
 };
 
 std::set<char> arithmetic_operators = {
@@ -31,10 +31,10 @@ std::set<char> arithmetic_operators = {
 };
 
 std::set<char> distribution_operators = {
-    '~', 'n', 'b', 'u'
+    '~', 'n', 'u'
 };
 
-std::map<char, int> op_priorities ={
+std::map<char, int> op_priorities = {
     {'(', 0}, // special operator (opening bracket) .. only for infix to postfix
     {'+', 1},
     {'-', 1},
@@ -42,11 +42,8 @@ std::map<char, int> op_priorities ={
     {'/', 2},
     {'~', 3},
     {'n', 3},
-    {'b', 3},
     {'u', 3},
 };
-
-// TODO dat Token do jinyho filu
 
 /**
  * Represents distribution, number or an operator
@@ -247,10 +244,11 @@ class Expression{
 
     std::stack<Token<real>> prefix_stack;
     std::stack<Token<real>> infix_help_stack;
-    real bin_size;
-    real std_deviation_quotient;
 
 public:
+
+    real bin_size;
+    real std_deviation_quotient;
 
     Expression(){}
 
@@ -283,6 +281,9 @@ public:
             // perform operation
             Token<real> result = Token<real>::operation(std::move(left), std::move(right), op, bin_size, std_deviation_quotient);
             prefix_stack.emplace(std::move(result));
+            if(prefix_stack.top().error_occurred){
+                return false;
+            }
         }
         else
             return false;
@@ -299,18 +300,12 @@ public:
     bool parse_postfix_input(std::stringstream& input){
         std::string input_string;
         std::getline(input, input_string);
-        std::cout << input_string << std::endl;
         std::stringstream new_number;
         real number;
 
         int state = 1;
 
         for(long unsigned int i = 0; i < input_string.length(); i++){
-            // DEBUG2("nacitame ", input_string[i]);
-            // DEBUG2("Size: ", prefix_stack.size());
-            // DEBUG("Top: ");
-            // // if(!prefix_stack.empty()) prefix_stack.top().print();
-            // DEBUG("-------");
 
             if(state == 1){ // first state - nothing read
                 // digit or '.'
@@ -321,7 +316,6 @@ public:
                 }
                 // operator
                 else if(operators.find(input_string[i]) != operators.end()){
-
                     if(!process_operator(input_string[i])) return false;
                     continue;
                 }
@@ -373,7 +367,6 @@ public:
                     new_number.clear();
                     prefix_stack.emplace(number);
                     if(!process_operator(input_string[i])) return false;
-                    // prefix_stack.push(Token<real>(input_string[i], 0)); //TODO
                     state = 1;
                     continue;
                 }
@@ -397,6 +390,14 @@ public:
     }
 
 
+    /**
+     * Put to output all operators with higher or equal
+     * priority to the output until we find the first operator
+     * with lower priority and then we move the operator to
+     * the infix stack
+     * Input: operator and stringstream& output
+     * returns: bool (success)
+     */
     bool process_operator_infix(char op, std::stringstream& output){
         if(op == '('){ // if '(' is the operator, we just put it into the stack
             infix_help_stack.emplace(op, op_priorities[op]);
@@ -438,6 +439,19 @@ public:
      * beginning and `)` to the end of the expression.
      * Then whenever we find "( -" we just put zero between.
      *
+     * ALGORITHM INFIX TO PREFIX CONVERSION
+     *    - Number   -> put the number straight to the output 
+     *    -   '('    -> to the infix stack
+     *    -   ')'    -> put to output all operators from the infix stack until
+     *                  we encounter the first '('
+     *    - Operator -> put to output all operators with higher or equal
+     *                  priority to the output until we find the first operator
+     *                  with lower priority and then we move the operator to
+     *                  the infix stack (for this task there is a function
+     *                  called process_operator_infix())
+     *    - Nothing (end of expression) -> we just move all remaining operators
+     *      to the infix stack to the output
+     *
      * Input: stringstream
      * Returns: bool (success)
      */
@@ -447,8 +461,6 @@ public:
 
         input_string.insert(input_string.begin(), '(');
         input_string.insert(input_string.begin() + input_string.length(), ')');
-
-        std::cout << input_string << std::endl;
 
         std::stack<size_t> positions;
 
@@ -462,11 +474,11 @@ public:
                 }
                 else continue;
             }
-            else{
+            else{ // state 2 = looking for the - (or something else)
                 if(input_string[i] == ' '){
                     continue;
                 }
-                else if(input_string[i] == '-'){
+                else if(input_string[i] == '-'){ // here will be inserted 0
                     positions.push(i);
                     state = 1;
                     continue;
@@ -489,17 +501,15 @@ public:
             input_string.insert(input_string.begin() + position, '0');
         }
 
-        std::cout << input_string << std::endl;
-
         std::stringstream new_number;
         real number;
-
-
         std::stringstream output; // this will be output for postfix
 
         state = 1;
 
-
+        // Same algorithm used as in postfix parsing, but here we just added
+        // also '(' and ')' as these operators also occur in infix notation.
+        // For description go to the postfix parsing.
         for(long unsigned int i = 0; i < input_string.length(); i++){
 
             if(state == 1){ // first state - nothing read
@@ -511,8 +521,7 @@ public:
                 }
                 // operator
                 else if(operators.find(input_string[i]) != operators.end() || input_string[i] == '(' || input_string[i] == ')'){
-
-                    if(!process_operator_infix(input_string[i], output)) return false; // TODO dat if(!) ... return false
+                    if(!process_operator_infix(input_string[i], output)) return false;
                     continue;
                 }
                 // space
@@ -536,7 +545,6 @@ public:
                     new_number.clear();
                     output << " " << number << " ";
                     if(!process_operator_infix(input_string[i], output)) return false;
-                    //if(!process_operator(input_string[i])) return false; // TODO zmenit
                     state = 1;
                     continue;
                 }
@@ -564,8 +572,6 @@ public:
                     new_number.clear();
                     output << " " << number << " ";
                     if(!process_operator_infix(input_string[i], output)) return false;
-                    // if(!process_operator(input_string[i])) return false; // TODO zmenit
-                    // prefix_stack.push(Token<real>(input_string[i], 0)); //TODO
                     state = 1;
                     continue;
                 }
@@ -612,6 +618,5 @@ public:
         return true;
     }
 };
-
 
 #endif

@@ -6,8 +6,8 @@
 test_prefix() {
     echo "---------------------------------------------------------------------"
     echo "Input for prefix test is: $1"
-    echo "Expected output: $2"
-    echo "$1" | ./main -p
+    echo "$1" | ./aprox -p
+    echo "EXPECTED OUTPUT: $2"
     echo "Return code is: $?"
 }
 
@@ -17,10 +17,11 @@ test_prefix() {
 test_infix() {
     echo "---------------------------------------------------------------------"
     echo "Input for infix test is: $1"
-    echo "Expected output: $2"
-    echo "$1" | ./main
+    echo "$1" | ./aprox
+    echo "EXPECTED OUTPUT: $2"
     echo "Return code is: $?"
 }
+
 
 echo "##########################################################################################################"
 echo "################################################ POSTFIX #################################################"
@@ -37,8 +38,7 @@ test_prefix "3 5 * +" "ERROR"
 echo "################################################ DISTRIBUTIONS ##################################################"
 test_prefix "0 100 ~ 3 * 10 -" "-10 ... 290"
 test_prefix "5 20 u 0 10 ~ *" "0 ... 200"
-test_prefix "0 4 u 2 - 10 *" "0 ... 2"
-test_prefix "50 10 u 5 10 u /" "10"
+test_prefix "0 4 u 2 - 10 *" "-20 ... 20"
 test_prefix "8 ~ 20 0 /" "ERROR"
 test_prefix "7 5 20 ~ 20 - /" "ERROR"
 
