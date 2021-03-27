@@ -4,3 +4,31 @@ We need to install Boost Math Toolkit:
 
 `sudo apt-get install libboost-dev`
 
+The next step is to compile the program:
+
+ `make`
+
+## Basic usage
+
+Use `./aprox -h` for printing help. It shows you all possible command line
+arguments. 
+
+You can also use files as input or output of the program
+(using `./aprox -i input_file` or `./aprox -o output_file`). 
+
+Default notation of the expression is the infix notation,
+however you can switch to prefix notation using `-p`.
+
+## More advanced options
+
+Option `-b` is used to define how big will be the bins that store the 
+distributions. Default is 1. If you want to use small number (i.e. distributions
+0.01 ~ 0.2), lower bin_size is recommended.
+
+Option `-r` is used for printing the result distribution. If you set -1, all
+the bins are printed. However using some natural number prints just
+that many bins. Default is 25.
+
+
+# Programming specification
+

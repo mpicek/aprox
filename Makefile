@@ -1,15 +1,15 @@
-all: main
+all: aprox
 
 .PHONY: all clean valgrind format
 
-main: main.cpp distribution.hpp expression.hpp
-	g++ main.cpp -o main -std=c++17 -Wall -Wextra
+aprox: main.cpp distribution.hpp expression.hpp
+	g++ main.cpp -o aprox -std=c++17 -Wall -Wextra
 
 valgrind:
-	valgrind ./main --leak-check=full < inp
+	valgrind ./aprox --leak-check=full < inp
 
 format:
 	clang-format -style=llvm main.cpp > main_format.cpp
 
 clean:
-	rm main
+	rm aprox
