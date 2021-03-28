@@ -169,6 +169,9 @@ public:
             std::cout << "    -p: read postfix notation, default: infix" << std::endl;
             std::cout << "    -b: bin_size - size of the bins in which the distributions are stored, default = 1" << std::endl;
             std::cout << "    -r: how many bins to use during result presentation, default = " << NUM_OF_RESULT_BINS_DEFAULT << std::endl;
+            std::cout << "Distributions: " << std::endl;
+            std::cout << "    - '~' of 'n' for normal distribution" << std::endl;
+            std::cout << "    - 'u' for uniform distribution" << std::endl;
             return true;
         }
         return false;

@@ -1,5 +1,9 @@
 # Aprox - probability calculator
 
+## Installation
+
+Look into INSTALL.md.
+
 We need to install Boost Math Toolkit:
 
 `sudo apt-get install libboost-dev`
@@ -29,6 +33,25 @@ Option `-r` is used for printing the result distribution. If you set -1, all
 the bins are printed. However using some natural number prints just
 that many bins. Default is 25.
 
+##
+
+For a demo run `./run_tutorial.sh`.
 
 # Programming specification
 
+There are 3 main files:
+ - `main.cpp` - it contains the class `Program` that manages the whole program
+ (reads input, prints output, parses arguments and runs `compute()`).
+ - `distribution.hpp` - file containing class `Distribution` that represents
+ distributions and its operations.
+ - `expression.hpp` - file containing class `Expression`, where the arithmetic
+ expression is stored, parsed and evaluated. In order to do that we need to
+ store more different types into a stack - for this reason there is the class
+`Token` that handles it.
+
+
+### Parsing the postfix expression
+
+Parsing the postfix expression is done by this diagram:
+
+![diagram](diagram.png)

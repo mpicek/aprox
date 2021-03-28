@@ -6,7 +6,9 @@ run_example(){
     then
         clear
     fi
+    echo ""
     echo $1
+    echo ""
     echo "Input: $2"
     echo "Command: ./aprox $3"
     echo "$2" | ./aprox $3
@@ -16,12 +18,12 @@ run_example(){
 run_example "Print help for more info" " " "-h"
 run_example "Simple prefix notation" "2.5 2 * 8 / 4 *" "-p"
 run_example "Simple prefix notation with normal distribution and use `-r` to have a nice and dense graph" "10 20 ~ 8 4 / *" "-p -r 10"
-run_example "Simple prefix notation with normal and uniform distributions" "10 30 ~ 20 50 u +" "-p -r 20"
+run_example "Simple prefix notation with normal and uniform distributions. WARNING: \
+DISTRIBUTIONS DON'T ALWAYS LOOK PERFECT DUE TO ROUNDING ERROR." "10 30 ~ 20 50 u +" "-p -r 20"
 run_example "Simple infix notation" "(5 + 3 * 2 - 1) / 2" ""
 run_example "No problem.." "-(-(-(-(-1))))" ""
 run_example "Works great!" "-(-(-(-1)))" ""
 run_example "Weird inputs!" "10   +     (-3)*(1/2)" ""
-# files in, out, different bin size, reallife problems, division by zero in distributions
 run_example "Handles errors.." "5 + 3.3.3" ""
 run_example "Handles errors.." "5 + / (1 - 1)" ""
 run_example "Handles errors.." "5 +* 4" ""
@@ -31,7 +33,7 @@ run_example "Distribution signs have the highest priority (but parentheses have 
 run_example "Can't divide by zero in distributions.." "5 ~ 15 / 0 ~ 2" ""
 run_example "Can't divide by zero in distributions.." "100 / (-2) ~ 0" ""
 run_example "Can't divide by zero in distributions.." "5 ~ 15 / (-2) ~ 2" ""
-# run_example "Handles errors.." "10 ~ 5" ""
+run_example "Handles errors.." "10 ~ 5" ""
 run_example "This is how it should have been written" "(-5) ~ 10" "-r 15"
 run_example "Sum with distributions" "0 ~ 10 + (-10) u 10 + (-10) ~ 20" ""
 run_example "Multiplication with distributions" "0 ~ 10 * (-10) u 0 * (-10) ~ 20" ""
@@ -45,5 +47,8 @@ cat out.txt
 rm out.txt
 read key
 echo "5 + 5 ~ 40" > in.txt
-run_example "Reading from input file in.txt:" "10 ~ 50" "-i in.txt -r 30"
+run_example "Reading from input file in.txt. The rounding error is clearly visible." "10 ~ 50" "-i in.txt -r 30"
 rm in.txt
+run_example "Reallife problem: How much will I earn this summer? Part-time jobs with no qualifications\
+pay 110 ~ 150Kc. I will work 8 hours/day, 5 days a week. I want to work 3 weeks. How much \
+will I earn? Also problems with rounding error. But a person still can see what is happening :)" "110 ~ 150 * 8 * 5 * 3" "" 
