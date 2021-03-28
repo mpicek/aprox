@@ -31,7 +31,6 @@ test_prefix "2.58 2 * 8 / 3.5 *" "2.2575"
 test_prefix "0.2 .2 *" "0.04"
 test_prefix "0.35" "0.35"
 test_prefix "5       3+1./" "8"
-test_prefix "5 5 + 5" "ERROR"
 test_prefix "0.5.3 2 *" "ERROR"
 test_prefix "3 5 * +" "ERROR"
 

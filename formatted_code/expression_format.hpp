@@ -19,21 +19,16 @@
   } while (0)
 #endif
 
-std::set<char> operators = {'+', '-', '*', '/', '~', 'n', 'u'};
-
-std::set<char> arithmetic_operators = {
-    '+',
-    '-',
-    '*',
-    '/',
-};
-
-std::set<char> distribution_operators = {'~', 'n', 'u'};
-
-std::map<char, int> op_priorities = {
-    {'(', 0}, // special operator (opening bracket) .. only for infix to postfix
-    {'+', 1}, {'-', 1}, {'*', 2}, {'/', 2}, {'~', 3}, {'n', 3}, {'u', 3},
-};
+/**
+ * Whether char[] contains a char or not.
+ */
+bool contains(const char *array, char character) {
+  for (size_t i = 0; array[i] != 0; i++) {
+    if (array[i] == character)
+      return true;
+  }
+  return false;
+}
 
 /**
  * Represents distribution, number or an operator
@@ -50,6 +45,10 @@ template <typename real> class Token {
   bool is_number;
   bool is_operator;
   bool is_distribution;
+
+  static constexpr char operators[] = "+-*/~nu";
+  static constexpr char arithmetic_operators[] = "+-*/";
+  static constexpr char distribution_operators[] = "~nu";
 
 public:
   bool get_is_operator() { return is_operator; }
@@ -147,9 +146,8 @@ public:
                                real std_deviation_quotient) {
     DEBUG2(left.number, right.number);
     // Create a distribution from 2 numbers (from .. to)
-    if (distribution_operators.find(operation) !=
-            distribution_operators.end() &&
-        left.is_number && right.is_number) {
+    if (contains(distribution_operators, operation) && left.is_number &&
+        right.is_number) {
 
       Token<real> result(std::make_unique<Distribution<real>>(
           operation, left.number, right.number, bin_size,
@@ -160,8 +158,7 @@ public:
 
     }
     // Perform an arithmetic operation
-    else if (arithmetic_operators.find(operation) !=
-             arithmetic_operators.end()) {
+    else if (contains(arithmetic_operators, operation)) {
       if (left.is_number && right.is_number) {
 
 // Define macro so that we don't need to copy code
@@ -237,6 +234,10 @@ template <typename real> class Expression {
   std::stack<Token<real>> prefix_stack;
   std::stack<Token<real>> infix_help_stack;
 
+  const char *operators = "+-*/~nu";
+  const char *arithmetic_operators = "+-*/";
+  const char *distribution_operators = "~nu";
+
 public:
   real bin_size;
   real std_deviation_quotient;
@@ -245,6 +246,39 @@ public:
 
   Expression(real bin_size, real std_deviation_quotient)
       : bin_size(bin_size), std_deviation_quotient(std_deviation_quotient) {}
+
+  /**
+   * Returns priority of an operator.
+   */
+  int return_priority(char op) {
+    switch (op) {
+    case '(': // special operator (opening bracket) .. only for infix to postfix
+      return 0;
+      break;
+    case '+':
+      return 1;
+      break;
+    case '-':
+      return 1;
+      break;
+    case '*':
+      return 2;
+      break;
+    case '/':
+      return 2;
+      break;
+    case '~':
+      return 3;
+      break;
+    case 'n':
+      return 3;
+      break;
+    case 'u':
+      return 3;
+      break;
+    }
+    return -1;
+  }
 
   /**
    * Prints stack and erases it (used for debugging)
@@ -307,7 +341,7 @@ public:
           continue;
         }
         // operator
-        else if (operators.find(input_string[i]) != operators.end()) {
+        else if (contains(operators, input_string[i])) {
           if (!process_operator(input_string[i]))
             return false;
           continue;
@@ -329,7 +363,7 @@ public:
           continue;
         }
         // operator
-        else if (operators.find(input_string[i]) != operators.end()) {
+        else if (contains(operators, input_string[i])) {
           new_number >> number;
           new_number.clear();
           prefix_stack.emplace(number);
@@ -357,7 +391,7 @@ public:
           continue;
         }
         // operator
-        else if (operators.find(input_string[i]) != operators.end()) {
+        else if (contains(operators, input_string[i])) {
           new_number >> number;
           new_number.clear();
           prefix_stack.emplace(number);
@@ -395,7 +429,7 @@ public:
    */
   bool process_operator_infix(char op, std::stringstream &output) {
     if (op == '(') { // if '(' is the operator, we just put it into the stack
-      infix_help_stack.emplace(op, op_priorities[op]);
+      infix_help_stack.emplace(op, return_priority(op));
       return true;
     } else if (op == ')') {
       // move all operators before '(' to the output
@@ -417,14 +451,14 @@ public:
     } else {
       // move operators with same or higher priority to the output
       while (!infix_help_stack.empty() &&
-             op_priorities[op] <=
-                 op_priorities[infix_help_stack.top().get_op()]) {
+             return_priority(op) <=
+                 return_priority(infix_help_stack.top().get_op())) {
         output << " " << infix_help_stack.top().get_op()
                << " ";          // move operator to output
         infix_help_stack.pop(); // and pop the operator
       }
       // put op into the stack
-      infix_help_stack.emplace(op, op_priorities[op]);
+      infix_help_stack.emplace(op, return_priority(op));
       return true;
     }
   }
@@ -514,7 +548,7 @@ public:
           continue;
         }
         // operator
-        else if (operators.find(input_string[i]) != operators.end() ||
+        else if (contains(operators, input_string[i]) ||
                  input_string[i] == '(' || input_string[i] == ')') {
           if (!process_operator_infix(input_string[i], output))
             return false;
@@ -537,7 +571,7 @@ public:
           continue;
         }
         // operator
-        else if (operators.find(input_string[i]) != operators.end() ||
+        else if (contains(operators, input_string[i]) ||
                  input_string[i] == '(' || input_string[i] == ')') {
           new_number >> number;
           new_number.clear();
@@ -566,7 +600,7 @@ public:
           continue;
         }
         // operator
-        else if (operators.find(input_string[i]) != operators.end() ||
+        else if (contains(operators, input_string[i]) ||
                  input_string[i] == '(' || input_string[i] == ')') {
           new_number >> number;
           new_number.clear();
