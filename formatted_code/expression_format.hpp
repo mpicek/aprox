@@ -46,11 +46,11 @@ template <typename real> class Token {
   bool is_operator;
   bool is_distribution;
 
-  static constexpr char operators[] = "+-*/~nu";
-  static constexpr char arithmetic_operators[] = "+-*/";
-  static constexpr char distribution_operators[] = "~nu";
-
 public:
+  static const char operators[];
+  static const char arithmetic_operators[];
+  static const char distribution_operators[];
+
   bool get_is_operator() { return is_operator; }
 
   char get_op() { return op; }
@@ -224,6 +224,12 @@ public:
   }
 };
 
+template <typename real> const char Token<real>::operators[] = "+-*/~nu";
+template <typename real>
+const char Token<real>::arithmetic_operators[] = "+-*/";
+template <typename real>
+const char Token<real>::distribution_operators[] = "~nu";
+
 /**
  * Class representing an expression.
  * Can parse and evaluate the expression.
@@ -233,10 +239,6 @@ template <typename real> class Expression {
 
   std::stack<Token<real>> prefix_stack;
   std::stack<Token<real>> infix_help_stack;
-
-  const char *operators = "+-*/~nu";
-  const char *arithmetic_operators = "+-*/";
-  const char *distribution_operators = "~nu";
 
 public:
   real bin_size;
@@ -341,7 +343,7 @@ public:
           continue;
         }
         // operator
-        else if (contains(operators, input_string[i])) {
+        else if (contains(Token<real>::operators, input_string[i])) {
           if (!process_operator(input_string[i]))
             return false;
           continue;
@@ -363,7 +365,7 @@ public:
           continue;
         }
         // operator
-        else if (contains(operators, input_string[i])) {
+        else if (contains(Token<real>::operators, input_string[i])) {
           new_number >> number;
           new_number.clear();
           prefix_stack.emplace(number);
@@ -391,7 +393,7 @@ public:
           continue;
         }
         // operator
-        else if (contains(operators, input_string[i])) {
+        else if (contains(Token<real>::operators, input_string[i])) {
           new_number >> number;
           new_number.clear();
           prefix_stack.emplace(number);
@@ -548,7 +550,7 @@ public:
           continue;
         }
         // operator
-        else if (contains(operators, input_string[i]) ||
+        else if (contains(Token<real>::operators, input_string[i]) ||
                  input_string[i] == '(' || input_string[i] == ')') {
           if (!process_operator_infix(input_string[i], output))
             return false;
@@ -571,7 +573,7 @@ public:
           continue;
         }
         // operator
-        else if (contains(operators, input_string[i]) ||
+        else if (contains(Token<real>::operators, input_string[i]) ||
                  input_string[i] == '(' || input_string[i] == ')') {
           new_number >> number;
           new_number.clear();
@@ -600,7 +602,7 @@ public:
           continue;
         }
         // operator
-        else if (contains(operators, input_string[i]) ||
+        else if (contains(Token<real>::operators, input_string[i]) ||
                  input_string[i] == '(' || input_string[i] == ')') {
           new_number >> number;
           new_number.clear();
